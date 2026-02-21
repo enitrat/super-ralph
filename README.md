@@ -7,15 +7,14 @@ Complete workflow framework with built-in orchestrators. Just configure agents, 
 ## Installation
 
 ```bash
-bun add @evmts/super-ralph smithers-orchestrator
+bun add @smithers-orchestrator/super-ralph
 ```
 
 ## Usage
 
 ```tsx
-import { SuperRalph, ralphOutputSchemas } from "@evmts/super-ralph";
-import { createSmithers } from "smithers-orchestrator";
-import { KimiAgent, GeminiAgent, ClaudeCodeAgent, CodexAgent } from "smithers-orchestrator";
+import { SuperRalph, ralphOutputSchemas } from "@smithers-orchestrator/super-ralph";
+import { createSmithers, KimiAgent, GeminiAgent, ClaudeCodeAgent, CodexAgent } from "smithers-orchestrator";
 import PRD from "./specs/PRD.mdx";                    // Your product requirements
 import EngineeringSpec from "./specs/Engineering.mdx"; // Your engineering spec
 import DesignSpec from "./specs/Design.mdx";          // Your design spec

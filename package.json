@@ -1,5 +1,5 @@
 {
-  "name": "@evmts/super-ralph",
+  "name": "@smithers-orchestrator/super-ralph",
   "version": "0.1.0",
   "description": "Reusable Ralph workflow pattern - ticket-driven development with multi-agent review loops",
   "author": "William Cory",
@@ -21,12 +21,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/evmts/super-ralph.git"
+    "url": "https://github.com/smithers-orchestrator/super-ralph.git"
   },
   "bugs": {
-    "url": "https://github.com/evmts/super-ralph/issues"
+    "url": "https://github.com/smithers-orchestrator/super-ralph/issues"
   },
-  "homepage": "https://github.com/evmts/super-ralph#readme",
+  "homepage": "https://github.com/smithers-orchestrator/super-ralph#readme",
   "keywords": [
     "ai",
     "workflow",
