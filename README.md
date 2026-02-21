@@ -19,35 +19,100 @@ bun add @evmts/super-ralph smithers-orchestrator
 
 ```typescript
 import { SuperRalph } from "@evmts/super-ralph";
-import { smithers, outputs } from "./smithers";
+import { Workflow, smithers, outputs } from "./smithers";
 import { categories } from "./categories";
 import { KimiAgent, GeminiAgent, ClaudeCodeAgent } from "smithers-orchestrator";
+import { CodebaseReview } from "./components/CodebaseReview";
+import { TicketPipeline } from "./components/TicketPipeline";
+import { IntegrationTest } from "./components/IntegrationTest";
+import { categoryReferencePaths } from "./config";
 import UpdateProgressPrompt from "./prompts/UpdateProgress.mdx";
 import DiscoverPrompt from "./prompts/Discover.mdx";
 
-export default smithers((ctx) => {
-  const target = getTarget();
+const REPO_ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 
+export default smithers((ctx) => {
   return (
     <Workflow name="my-workflow">
       <SuperRalph
         ctx={ctx}
-        target={target}
         prompts={{
           UpdateProgress: UpdateProgressPrompt,
           Discover: DiscoverPrompt,
-          // ... your other prompts
+          Research: null as any,
+          Plan: null as any,
+          Implement: null as any,
+          Test: null as any,
+          BuildVerify: null as any,
+          SpecReview: null as any,
+          ReviewFix: null as any,
+          Report: null as any,
+          CategoryReview: null as any,
+          CodeReview: null as any,
+          IntegrationTest: null as any,
         }}
         agents={{
           updateProgress: {
-            agent: new KimiAgent({ /* ... */ }),
-            fallback: new GeminiAgent({ /* ... */ }),
+            agent: new KimiAgent({
+              model: "kimi-code/kimi-for-coding",
+              systemPrompt: "Summarize progress. Read completed tickets and write a brief status update.",
+              cwd: REPO_ROOT,
+              yolo: true,
+              thinking: true,
+              timeoutMs: 10 * 60 * 1000,
+            }),
+            fallback: new GeminiAgent({
+              model: "gemini-2.5-pro",
+              systemPrompt: "Summarize progress. Read completed tickets and write a brief status update.",
+              cwd: REPO_ROOT,
+              yolo: true,
+              timeoutMs: 10 * 60 * 1000,
+            }),
           },
           discover: {
-            agent: new GeminiAgent({ /* ... */ }),
-            fallback: new ClaudeCodeAgent({ /* ... */ }),
+            agent: new GeminiAgent({
+              model: "gemini-2.5-pro",
+              systemPrompt: "Discover new work. Review specs and code to identify next tickets.",
+              cwd: REPO_ROOT,
+              yolo: true,
+              timeoutMs: 15 * 60 * 1000,
+            }),
+            fallback: new ClaudeCodeAgent({
+              model: "claude-opus-4-6",
+              systemPrompt: "Discover new work. Review specs and code to identify next tickets.",
+              cwd: REPO_ROOT,
+              dangerouslySkipPermissions: true,
+              timeoutMs: 15 * 60 * 1000,
+            }),
           },
-          // ... your other agents
+          integrationTest: {
+            agent: new ClaudeCodeAgent({
+              model: "claude-sonnet-4-6",
+              systemPrompt: "Run integration tests. Execute test commands, document results.",
+              cwd: REPO_ROOT,
+              dangerouslySkipPermissions: true,
+              timeoutMs: 20 * 60 * 1000,
+            }),
+            fallback: new KimiAgent({
+              model: "kimi-code/kimi-for-coding",
+              systemPrompt: "Run integration tests. Execute test commands, document results.",
+              cwd: REPO_ROOT,
+              yolo: true,
+              thinking: true,
+              timeoutMs: 20 * 60 * 1000,
+            }),
+          },
+          // Other agents handled by child components (TicketPipeline, etc.)
+          research: null as any,
+          plan: null as any,
+          implement: null as any,
+          test: null as any,
+          buildVerify: null as any,
+          specReview: null as any,
+          reviewFix: null as any,
+          report: null as any,
+          categoryReview: null as any,
+          codeReview: null as any,
         }}
         config={{
           name: "my-workflow",
@@ -55,10 +120,26 @@ export default smithers((ctx) => {
           taskRetries: 3,
           categories,
           outputs,
-          categoryReferencePaths: { /* ... */ },
-          CodebaseReview: MyCodebaseReview,
-          TicketPipeline: MyTicketPipeline,
-          IntegrationTest: MyIntegrationTest,
+          categoryReferencePaths,
+          CodebaseReview,
+          TicketPipeline,
+          IntegrationTest,
+          target: {
+            id: "my-project",
+            name: "My Project",
+            buildCmds: { go: "go build ./...", rust: "cargo build" },
+            testCmds: { go: "go test ./...", rust: "cargo test", e2e: "bun test" },
+            fmtCmds: { go: "gofmt -w .", rust: "cargo fmt" },
+            specsPath: "docs/specs/",
+            codeStyle: "Go: snake_case, Rust: snake_case, JSON: snake_case",
+            reviewChecklist: [
+              "Spec compliance",
+              "Architecture patterns",
+              "Test coverage",
+              "Security",
+            ],
+            referenceFiles: ["docs/reference/"],
+          },
         }}
       />
     </Workflow>
@@ -69,22 +150,54 @@ export default smithers((ctx) => {
 ## What You Provide
 
 ### Prompts (MDX files)
-Your domain-specific instructions for each step:
-- `UpdateProgress` - How to summarize progress
-- `Discover` - How to identify new work
-- `Research`, `Plan`, `Implement`, etc. - Step-specific instructions
+Your domain-specific instructions for each workflow step. These are React components (compiled from MDX) that receive props and render the prompt text.
 
-### Agents (Smithers agents)
-Your choice of AI models and configurations:
-- Which models to use (Claude, Codex, Gemini, Kimi, etc.)
-- System prompts, timeouts, permissions
-- Fallback agents for each step
+**Required prompts:**
+- `UpdateProgress` - How to summarize progress across completed tickets
+- `Discover` - How to identify new work from specs and code
+
+**Optional prompts** (handled by your child components like TicketPipeline):
+- `Research`, `Plan`, `Implement`, `Test`, `BuildVerify`, `SpecReview`, `ReviewFix`, `Report`
+- `CategoryReview`, `CodeReview`, `IntegrationTest`
+
+### Agents
+Your choice of AI models and configurations for each step:
+
+**Required agents:**
+- `updateProgress` - { agent, fallback } for progress summarization
+- `discover` - { agent, fallback } for ticket discovery
+- `integrationTest` - { agent, fallback } for running tests
+
+**Optional agents** (configured in your child components):
+- `research`, `plan`, `implement`, `test`, `buildVerify`, `specReview`, `reviewFix`, `report`
+- `categoryReview`, `codeReview`
+
+Each agent config includes:
+- Model selection (Claude, Codex, Gemini, Kimi, etc.)
+- System prompts (task-specific instructions)
+- Timeouts, permissions (yolo/dangerouslySkipPermissions)
+- Working directory (cwd)
 
 ### Config
-- `categories` - Your project's work categories
+All project-specific configuration:
+
+- `name` - Workflow name
+- `maxConcurrency` - Max parallel tasks
+- `taskRetries` - Retry count for failed tasks
+- `categories` - Your project's work categories (e.g., `[{ id: "auth", name: "Authentication" }, ...]`)
 - `outputs` - Your Smithers output schemas
-- `categoryReferencePaths` - Category-specific reference docs
-- `CodebaseReview`, `TicketPipeline`, `IntegrationTest` - Your orchestrator components
+- `categoryReferencePaths` - Map category IDs to reference doc paths
+- `target` - Your project config:
+  - `buildCmds` - Build commands by language (go, rust, etc.)
+  - `testCmds` - Test commands by type
+  - `fmtCmds` - Format commands
+  - `specsPath` - Path to specs directory
+  - `codeStyle` - Code style guidelines
+  - `reviewChecklist` - Code review checklist items
+  - `referenceFiles` - Reference documentation paths
+- `CodebaseReview` - Your codebase review orchestrator component
+- `TicketPipeline` - Your ticket pipeline orchestrator component
+- `IntegrationTest` - Your integration test orchestrator component
 
 ## What SuperRalph Provides
 
