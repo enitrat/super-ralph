@@ -9,11 +9,13 @@ export type SuperRalphContext = {
   progressSummary: string | null;
   categories: ReadonlyArray<{ readonly id: string; readonly name: string }>;
   outputs: any;
+  target: any;
 };
 
 export type UseSuperRalphConfig = {
   categories: ReadonlyArray<{ readonly id: string; readonly name: string }>;
   outputs: any;
+  target: any;
 };
 
 /**
@@ -33,5 +35,6 @@ export function useSuperRalph(ctx: SmithersCtx<any>, config: UseSuperRalphConfig
     progressSummary,
     categories: config.categories,
     outputs: config.outputs,
+    target: config.target,
   };
 }

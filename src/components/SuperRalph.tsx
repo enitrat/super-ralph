@@ -19,7 +19,8 @@ type UpdateProgressProps = {
 type DiscoverProps = {
   agent: any;
   fallbackAgent: any;
-  categories: ReadonlyArray<{ readonly id: string; readonly name: string }>;
+  specsPath: string;
+  referenceFiles: string[];
 };
 
 type IntegrationTestProps = {
@@ -31,10 +32,12 @@ type IntegrationTestProps = {
 };
 
 type CodebaseReviewProps = {
+  target: any;
   children: React.ReactElement;
 };
 
 type TicketPipelineProps = {
+  target: any;
   children: React.ReactElement;
 };
 
@@ -43,7 +46,6 @@ export type SuperRalphProps = {
   superRalphCtx: SuperRalphContext;
   maxConcurrency: number;
   taskRetries: number;
-  target: any;
   skipPhases?: Set<string>;
   children: React.ReactNode;
 };
@@ -52,11 +54,10 @@ export function SuperRalph({
   superRalphCtx,
   maxConcurrency,
   taskRetries,
-  target,
   skipPhases = new Set(),
   children,
 }: SuperRalphProps) {
-  const { ctx, completedTicketIds, unfinishedTickets, reviewFindings, progressSummary, categories, outputs } = superRalphCtx;
+  const { ctx, completedTicketIds, unfinishedTickets, reviewFindings, progressSummary, categories, outputs, target } = superRalphCtx;
 
   // Extract child components from children
   const childArray = React.Children.toArray(children);
@@ -86,7 +87,7 @@ export function SuperRalph({
           </Task>
         )}
 
-        {!skipPhases.has("CODEBASE_REVIEW") && codebaseReview && codebaseReview.props.children}
+        {!skipPhases.has("CODEBASE_REVIEW") && codebaseReview && React.cloneElement(codebaseReview.props.children, { target: codebaseReview.props.target })}
 
         {!skipPhases.has("DISCOVER") && discover && (
           <Task
@@ -98,8 +99,8 @@ export function SuperRalph({
           >
             <DiscoverPrompt
               projectName={updateProgress?.props.projectName ?? "Project"}
-              specsPath={target.specsPath}
-              referenceFiles={target.referenceFiles}
+              specsPath={discover.props.specsPath}
+              referenceFiles={discover.props.referenceFiles}
               categories={categories}
               completedTicketIds={completedTicketIds}
               previousProgress={progressSummary}
