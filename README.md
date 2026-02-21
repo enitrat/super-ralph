@@ -4,6 +4,8 @@
 
 An opinionated [Smithers](https://smithers.sh) workflow. You just provide the specs, this workflow does the rest.
 
+Supports subscriptions.
+
 ## Installation
 
 ```bash
@@ -63,60 +65,34 @@ export default smithers((ctx) => (
 
 That's it! 30 lines of configuration for a complete workflow.
 
-## What's Included
+## The Pattern
 
-- ✅ **13 workflow steps** - UpdateProgress, Discover, CategoryReview, Research, Plan, Implement, Test, BuildVerify, SpecReview, CodeReview, ReviewFix, Report, IntegrationTest
-- ✅ **All orchestrators** - TicketPipeline, ValidationLoop, CodebaseReview built-in
-- ✅ **Generic prompts** - 13 parameterized MDX prompts
-- ✅ **Output schemas** - `ralphOutputSchemas` with all standard schemas
-- ✅ **Selectors** - Data extraction utilities
-- ✅ **Zero boilerplate** - Just configure 5 agents and provide specs
+Under the hood this opinionated workflow is the following steps all in parallel in a pipeline
 
-## Configuration
-
-### Required Props
-
-| Prop                  | Description                                                 |
-| --------------------- | ----------------------------------------------------------- |
-| `ctx`                 | Smithers context                                            |
-| `outputs`             | Smithers output schemas (use `ralphOutputSchemas`)          |
-| `focuses`             | Work areas: `[{ id: "auth", name: "Authentication" }, ...]` |
-| `target`              | Project config (see below)                                  |
-| `maxConcurrency`      | Max parallel tasks                                          |
-| `planningAgent`       | Agent for research, planning, discovery                     |
-| `implementationAgent` | Agent for implementation and fixes                          |
-| `testingAgent`        | Agent for running tests and build verification              |
-| `reviewingAgent`      | Agent for code and spec reviews                             |
-| `reportingAgent`      | Agent for progress updates and reports                      |
-
-### Target Config
-
-```typescript
-{
-  id: string;                      // Project ID
-  name: string;                    // Display name
-  specsPath: string;               // Where specs live (e.g., "docs/specs/")
-  referenceFiles: string[];        // Reference docs (e.g., ["docs/reference/"])
-  buildCmds: Record<string, string>; // Build commands per language
-  testCmds: Record<string, string>;  // Test commands per type
-  codeStyle: string;               // Code style rules
-  reviewChecklist: string[];       // Review criteria
-}
+```
+Ralph (infinite loop)
+  ├─ UpdateProgress → PROGRESS.md
+  ├─ CodebaseReview → per-focus reviews → tickets
+  ├─ Discover → new feature tickets
+  ├─ IntegrationTest → per-focus test runs
+  └─ TicketPipeline × N (parallel, in worktrees)
+     ├─ Research → gather context
+     ├─ Plan → TDD plan
+     ├─ ValidationLoop (loops until approved)
+     │  ├─ Implement → write tests + code
+     │  ├─ Test → run all tests
+     │  ├─ BuildVerify → check compilation
+     │  ├─ SpecReview + CodeReview (parallel)
+     │  └─ ReviewFix → fix issues
+     └─ Report → completion summary
 ```
 
-### Optional Props
+This opinionated workflow is optimized in following ways:
 
-| Prop              | Default                         | Description                             |
-| ----------------- | ------------------------------- | --------------------------------------- |
-| `taskRetries`     | `3`                             | Retry count for failed tasks            |
-| `progressFile`    | `"PROGRESS.md"`                 | Progress file path                      |
-| `findingsFile`    | `"docs/test-suite-findings.md"` | Test findings file                      |
-| `commitConfig`    | `{}`                            | `{ prefix, mainBranch, emojiPrefixes }` |
-| `testSuites`      | From `target.testCmds`          | Custom test suite definitions           |
-| `focusTestSuites` | `{}`                            | Test suites per focus area              |
-| `focusDirs`       | `{}`                            | Directories per focus for review        |
-| `skipPhases`      | `new Set()`                     | Phases to skip                          |
-| `children`        | `undefined`                     | Spec MDX files                          |
+- Observability: multiple reporting steps and lots of data stored in sqlite
+- Quality: via CI checks, review loops, and context-engineered research-plan-implement steps
+- Planning: Optimizes ralph by in real time generating tickets rather than hardcoding them up front
+- Parallelization: All tickets implemented in a JJ Workspace in parallel and then merged back into the main branch as stacked changes
 
 ## Advanced: Custom Components
 
@@ -143,25 +119,7 @@ Or run additional logic in parallel:
 />
 ```
 
-## The Pattern
-
-```
-Ralph (infinite loop)
-  ├─ UpdateProgress → PROGRESS.md
-  ├─ CodebaseReview → per-focus reviews → tickets
-  ├─ Discover → new feature tickets
-  ├─ IntegrationTest → per-focus test runs
-  └─ TicketPipeline × N (parallel, in worktrees)
-     ├─ Research → gather context
-     ├─ Plan → TDD plan
-     ├─ ValidationLoop (loops until approved)
-     │  ├─ Implement → write tests + code
-     │  ├─ Test → run all tests
-     │  ├─ BuildVerify → check compilation
-     │  ├─ SpecReview + CodeReview (parallel)
-     │  └─ ReviewFix → fix issues
-     └─ Report → completion summary
-```
+These steps default to <SuperRalph.Component when not provided.
 
 ## License
 
