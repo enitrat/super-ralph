@@ -36,6 +36,9 @@
     "tdd",
     "code-review"
   ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "peerDependencies": {
     "smithers-orchestrator": "*"
   },
