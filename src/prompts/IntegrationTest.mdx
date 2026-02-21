@@ -1,0 +1,82 @@
+INTEGRATION TEST — Category: {props.categoryId} ({props.categoryName})
+
+Your job is to make progress setting up and running integration/E2E tests for **{props.categoryName}**.
+
+This is INCREMENTAL work — you are NOT expected to make everything pass.
+You ARE expected to:
+1. Try to get as far as you can
+2. Clearly document what's blocking further progress
+3. Suggest tickets that would unblock testing
+
+## Previous Findings
+
+Read `{props.findingsFile}` if it exists — pick up where the last iteration left off.
+If the file doesn't exist yet, you'll create it.
+
+## Test Approach for this Category
+
+{props.suites && props.suites.length > 0
+  ? props.suites.map(s => `- ${s}`).join('\n')
+  : '- No external test suites for this category'}
+
+### Setup Hints
+
+{props.setupHints && props.setupHints.length > 0
+  ? props.setupHints.map(h => `- ${h}`).join('\n')
+  : '- No setup hints'}
+
+### Test Directories
+
+{props.testDirs && props.testDirs.length > 0
+  ? props.testDirs.map(f => `- ${f}`).join('\n')
+  : '- No specific test directories'}
+
+## What To Do
+
+1. Read previous findings for this category in `{props.findingsFile}` (if any)
+2. Try the next step to make progress:
+   - If tests are **NOT SET UP**: try to create test files and infrastructure
+   - If tests are **BLOCKED**: check if the blocker has been resolved since last time
+   - If tests are **PARTIALLY SET UP**: try to get more tests running
+   - If tests are **RUNNING**: check pass/fail counts, investigate failures
+3. Run the relevant test commands
+4. Update `{props.findingsFile}` with your findings for this category
+5. Commit and push:
+```
+git add {props.findingsFile}
+git commit -m "{props.commitMessage || `📊 test(${props.categoryId}): update integration test findings`}"
+git pull --rebase origin main && git push
+```
+
+## CRITICAL: Document Blockers
+
+If you can't make progress because a module isn't implemented yet, SAY SO CLEARLY.
+Example: "BLOCKED: Cannot test repo creation E2E because repo service is not implemented"
+
+## CRITICAL: Flag Human Intervention
+
+Some blockers can't be solved by agents. Flag these separately as `needsHumanIntervention`:
+- "Need Docker running locally"
+- "Need PostgreSQL running for integration tests"
+- "Need to configure CI secrets"
+
+## Findings File Format
+
+When writing to `{props.findingsFile}`, use this format for your category's section:
+
+```markdown
+## {props.categoryId}
+### Status: [NOT SET UP | BLOCKED | PARTIALLY SET UP | RUNNING | PASSING]
+### What works:
+- ...
+### What was tried:
+- ...
+### What's blocked:
+- ...
+### Needs human intervention:
+- ...
+### Suggested tickets:
+- ...
+```
+
+Preserve other categories' sections when updating the file — only modify your own section.

@@ -2,7 +2,7 @@
 
 > Reusable Ralph workflow - ticket-driven development with multi-agent review loops
 
-Zero boilerplate. Generic prompts included. Just configure and go.
+Zero boilerplate. Generic prompts and IntegrationTest included. Just configure and go.
 
 ## Installation
 
@@ -20,49 +20,64 @@ import { KimiAgent, GeminiAgent, ClaudeCodeAgent } from "smithers-orchestrator";
 // 1. Create Smithers with built-in schemas
 const { smithers, outputs } = createSmithers(ralphOutputSchemas, { dbPath: "./workflow.db" });
 
-// 2. Define categories
-const categories = [
-  { id: "auth", name: "Authentication" },
-  { id: "api", name: "API Server" },
-] as const;
-
-// 3. Define target
-const target = {
-  id: "my-project",
-  name: "My Project",
-  buildCmds: { go: "go build ./..." },
-  testCmds: { go: "go test ./..." },
-  fmtCmds: { go: "gofmt -w ." },
-  specsPath: "docs/specs/",
-  codeStyle: "Go: snake_case",
-  reviewChecklist: ["Spec compliance", "Test coverage"],
-  referenceFiles: ["docs/reference/"],
-};
-
-// 4. Import your orchestrator components
-// These contain your domain-specific logic for:
-// - CodebaseReview: Review code per category, suggest tickets
+// 2. Import your 2 orchestrator components
+// - CodebaseReview: Reviews code per category, suggests tickets
 // - TicketPipeline: Research → Plan → Implement → Test → Review → Report
-// - IntegrationTest: Run integration tests per category
-//
 // See https://github.com/evmts/plue/tree/main/workflow/components for reference
 import { CodebaseReview } from "./components/CodebaseReview";
 import { TicketPipeline } from "./components/TicketPipeline";
-import { IntegrationTest } from "./components/IntegrationTest";
 
-// 5. Create workflow
+// 3. Create workflow
 export default smithers((ctx) => {
-  const superRalphCtx = useSuperRalph(ctx, { categories, outputs });
+  const superRalphCtx = useSuperRalph(ctx, {
+    categories: [
+      { id: "auth", name: "Authentication" },
+      { id: "api", name: "API Server" },
+    ],
+    outputs,
+  });
 
   return (
     <SuperRalph
       superRalphCtx={superRalphCtx}
       ctx={ctx}
+      categories={[
+        { id: "auth", name: "Authentication" },
+        { id: "api", name: "API Server" },
+      ]}
+      outputs={outputs}
+      target={{
+        id: "my-project",
+        name: "My Project",
+        buildCmds: { go: "go build ./..." },
+        testCmds: { go: "go test ./..." },
+        fmtCmds: { go: "gofmt -w ." },
+        specsPath: "docs/specs/",
+        codeStyle: "Go: snake_case",
+        reviewChecklist: ["Spec compliance", "Test coverage"],
+        referenceFiles: ["docs/reference/"],
+      }}
+      categoryTestSuites={{
+        "auth": {
+          suites: ["Auth unit tests", "Auth E2E tests"],
+          setupHints: ["Run go test ./internal/auth/..."],
+          testDirs: ["internal/auth/", "e2e/"],
+        },
+        "api": {
+          suites: ["API E2E tests"],
+          setupHints: ["Run go test ./internal/routes/..."],
+          testDirs: ["internal/routes/", "e2e/"],
+        },
+      }}
+      CodebaseReview={CodebaseReview}
+      TicketPipeline={TicketPipeline}
       promptConfig={{
         projectName: "My Project",
         progressFile: "PROGRESS.md",
-        commitMessage: "📝 docs: update progress",
+        findingsFile: "docs/test-suite-findings.md",
       }}
+      maxConcurrency={12}
+      taskRetries={3}
       agents={{
         updateProgress: {
           agent: new KimiAgent({

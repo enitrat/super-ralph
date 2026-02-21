@@ -6,15 +6,18 @@ import { useSuperRalph } from "../hooks/useSuperRalph";
 import React from "react";
 import UpdateProgressPrompt from "../prompts/UpdateProgress.mdx";
 import DiscoverPrompt from "../prompts/Discover.mdx";
+import { IntegrationTest as DefaultIntegrationTest } from "./IntegrationTest";
 
 export type SuperRalphAgents = {
   updateProgress: { agent: any; fallback: any };
   discover: { agent: any; fallback: any };
+  integrationTest: { agent: any; fallback: any };
 };
 
 export type SuperRalphPromptConfig = {
   projectName: string;
   progressFile: string;
+  findingsFile: string;
   commitMessage?: string;
 };
 
@@ -28,9 +31,10 @@ export type SuperRalphProps = {
   categories: ReadonlyArray<{ readonly id: string; readonly name: string }>;
   outputs: any;
   target: any;
+  categoryTestSuites: Record<string, { suites: string[]; setupHints: string[]; testDirs: string[] }>;
   CodebaseReview: React.ComponentType<{ target: any }>;
   TicketPipeline: React.ComponentType<{ target: any; ticket: any; ctx: SmithersCtx<any> }>;
-  IntegrationTest: React.ComponentType<{ target: any }>;
+  IntegrationTest?: React.ComponentType<any>;
   skipPhases?: Set<string>;
 };
 
@@ -44,9 +48,10 @@ export function SuperRalph({
   categories,
   outputs,
   target,
+  categoryTestSuites,
   CodebaseReview,
   TicketPipeline,
-  IntegrationTest,
+  IntegrationTest = DefaultIntegrationTest,
   skipPhases = new Set(),
 }: SuperRalphProps) {
   const { completedTicketIds, unfinishedTickets, reviewFindings, progressSummary } = superRalphCtx;
@@ -93,7 +98,18 @@ export function SuperRalph({
           </Task>
         )}
 
-        {!skipPhases.has("INTEGRATION_TEST") && <IntegrationTest target={target} />}
+        {!skipPhases.has("INTEGRATION_TEST") && (
+          <IntegrationTest
+            categories={categories}
+            outputs={outputs}
+            agent={agents.integrationTest.agent}
+            fallbackAgent={agents.integrationTest.fallback}
+            taskRetries={taskRetries}
+            maxConcurrency={maxConcurrency}
+            categoryTestSuites={categoryTestSuites}
+            findingsFile={promptConfig.findingsFile}
+          />
+        )}
 
         {unfinishedTickets.map((ticket: any) => (
           <Worktree key={ticket.id} id={`wt-${ticket.id}`} path={`/tmp/workflow-wt-${ticket.id}`}>
