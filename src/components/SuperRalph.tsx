@@ -45,23 +45,23 @@ export type SuperRalphConfig = {
   CodebaseReview: React.ComponentType<{ target: any }>;
   TicketPipeline: React.ComponentType<{ target: any; ticket: any; ctx: SmithersCtx<any> }>;
   IntegrationTest: React.ComponentType<{ target: any }>;
+  target: any; // Project-specific target config (build cmds, test cmds, code style, etc.)
 };
 
 export type SuperRalphProps = {
   ctx: SmithersCtx<any>;
-  target: any;
   prompts: SuperRalphPrompts;
   agents: SuperRalphAgents;
   config: SuperRalphConfig;
   skipPhases?: Set<string>;
 };
 
-export function SuperRalph({ ctx, target, prompts, agents, config, skipPhases = new Set() }: SuperRalphProps) {
+export function SuperRalph({ ctx, prompts, agents, config, skipPhases = new Set() }: SuperRalphProps) {
   const { findings: reviewFindings } = selectReviewTickets(ctx, config.categories, config.outputs);
   const { completed: completedTicketIds, unfinished: unfinishedTickets } = selectAllTickets(ctx, config.categories, config.outputs);
 
   const { UpdateProgress, Discover } = prompts;
-  const { CodebaseReview, TicketPipeline, IntegrationTest } = config;
+  const { CodebaseReview, TicketPipeline, IntegrationTest, target } = config;
 
   return (
     <Ralph until={false} maxIterations={Infinity} onMaxReached="return-last">
