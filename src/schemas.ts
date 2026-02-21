@@ -38,7 +38,13 @@ export const ralphOutputSchemas = {
       feedback: z.string(),
     }),
     overallSeverity: z.enum(["none", "minor", "major", "critical"]),
-    suggestedTickets: z.array(z.any()),
+    suggestedTickets: z.array(z.object({
+      id: z.string(),
+      title: z.string(),
+      description: z.string(),
+      category: z.string(),
+      priority: z.enum(["critical", "high", "medium", "low"]),
+    })),
   }),
 
   research: z.object({
