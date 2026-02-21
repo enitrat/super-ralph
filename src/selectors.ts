@@ -48,8 +48,8 @@ export function selectDiscoverTickets(ctx: SmithersCtx<RalphOutputs>, outputs: R
 export function selectCompletedTicketIds(ctx: SmithersCtx<RalphOutputs>, tickets: Ticket[], outputs: RalphOutputs): string[] {
   return tickets
     .filter((t) => {
-      const report = ctx.outputMaybe(outputs.report, { nodeId: `${t.id}:report` });
-      return report?.status === "complete";
+      const land = selectLand(ctx, t.id, outputs);
+      return land?.merged === true;
     })
     .map((t) => t.id);
 }
@@ -101,6 +101,10 @@ export function selectTestResults(ctx: SmithersCtx<RalphOutputs>, ticketId: stri
 
 export function selectSpecReview(ctx: SmithersCtx<RalphOutputs>, ticketId: string, outputs: RalphOutputs) {
   return ctx.outputMaybe(outputs.spec_review, { nodeId: `${ticketId}:spec-review` });
+}
+
+export function selectLand(ctx: SmithersCtx<RalphOutputs>, ticketId: string, outputs: RalphOutputs) {
+  return ctx.outputMaybe(outputs.land, { nodeId: `${ticketId}:land` });
 }
 
 export function selectCodeReviews(ctx: SmithersCtx<RalphOutputs>, ticketId: string, outputs: RalphOutputs) {
