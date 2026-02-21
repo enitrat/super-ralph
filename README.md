@@ -13,12 +13,22 @@ bun add @smithers-orchestrator/super-ralph smithers-orchestrator
 ## Usage
 
 ```tsx
-import { SuperRalph, ralphOutputSchemas } from "@smithers-orchestrator/super-ralph";
-import { createSmithers, ClaudeCodeAgent, CodexAgent, GeminiAgent } from "smithers-orchestrator";
+import {
+  SuperRalph,
+  ralphOutputSchemas,
+} from "@smithers-orchestrator/super-ralph";
+import {
+  createSmithers,
+  ClaudeCodeAgent,
+  CodexAgent,
+  GeminiAgent,
+} from "smithers-orchestrator";
 import PRD from "./specs/PRD.mdx";
 import EngineeringSpec from "./specs/Engineering.mdx";
 
-const { smithers, outputs } = createSmithers(ralphOutputSchemas, { dbPath: "./workflow.db" });
+const { smithers, outputs } = createSmithers(ralphOutputSchemas, {
+  dbPath: "./workflow.db",
+});
 
 export default smithers((ctx) => (
   <SuperRalph
@@ -39,10 +49,10 @@ export default smithers((ctx) => (
       reviewChecklist: ["Spec compliance", "Test coverage", "Security"],
     }}
     maxConcurrency={12}
-    planningAgent={new ClaudeCodeAgent({ model: "claude-opus-4-6", cwd: process.cwd() })}
-    implementationAgent={new CodexAgent({ model: "gpt-5.3-codex", cwd: process.cwd(), yolo: true })}
+    planningAgent={new CodexAgent({ model: "gpt-5.3-codex", cwd: process.cwd(), yolo: true })}
+    implementationAgent={new ClaudeCodeAgent({ model: "claude-sonnet-4-6", cwd: process.cwd() })}
     testingAgent={new ClaudeCodeAgent({ model: "claude-sonnet-4-6", cwd: process.cwd() })}
-    reviewingAgent={new ClaudeCodeAgent({ model: "claude-sonnet-4-6", cwd: process.cwd() })}
+    reviewingAgent={new CodexAgent({ model: "gpt-5.3-codex", cwd: process.cwd(), yolo: true })}
     reportingAgent={new GeminiAgent({ model: "gemini-2.5-pro", cwd: process.cwd(), yolo: true })}
   >
     <PRD />
@@ -66,18 +76,18 @@ That's it! 30 lines of configuration for a complete workflow.
 
 ### Required Props
 
-| Prop | Description |
-|------|-------------|
-| `ctx` | Smithers context |
-| `outputs` | Smithers output schemas (use `ralphOutputSchemas`) |
-| `focuses` | Work areas: `[{ id: "auth", name: "Authentication" }, ...]` |
-| `target` | Project config (see below) |
-| `maxConcurrency` | Max parallel tasks |
-| `planningAgent` | Agent for research, planning, discovery |
-| `implementationAgent` | Agent for implementation and fixes |
-| `testingAgent` | Agent for running tests and build verification |
-| `reviewingAgent` | Agent for code and spec reviews |
-| `reportingAgent` | Agent for progress updates and reports |
+| Prop                  | Description                                                 |
+| --------------------- | ----------------------------------------------------------- |
+| `ctx`                 | Smithers context                                            |
+| `outputs`             | Smithers output schemas (use `ralphOutputSchemas`)          |
+| `focuses`             | Work areas: `[{ id: "auth", name: "Authentication" }, ...]` |
+| `target`              | Project config (see below)                                  |
+| `maxConcurrency`      | Max parallel tasks                                          |
+| `planningAgent`       | Agent for research, planning, discovery                     |
+| `implementationAgent` | Agent for implementation and fixes                          |
+| `testingAgent`        | Agent for running tests and build verification              |
+| `reviewingAgent`      | Agent for code and spec reviews                             |
+| `reportingAgent`      | Agent for progress updates and reports                      |
 
 ### Target Config
 
@@ -96,17 +106,17 @@ That's it! 30 lines of configuration for a complete workflow.
 
 ### Optional Props
 
-| Prop | Default | Description |
-|------|---------|-------------|
-| `taskRetries` | `3` | Retry count for failed tasks |
-| `progressFile` | `"PROGRESS.md"` | Progress file path |
-| `findingsFile` | `"docs/test-suite-findings.md"` | Test findings file |
-| `commitConfig` | `{}` | `{ prefix, mainBranch, emojiPrefixes }` |
-| `testSuites` | From `target.testCmds` | Custom test suite definitions |
-| `focusTestSuites` | `{}` | Test suites per focus area |
-| `focusDirs` | `{}` | Directories per focus for review |
-| `skipPhases` | `new Set()` | Phases to skip |
-| `children` | `undefined` | Spec MDX files |
+| Prop              | Default                         | Description                             |
+| ----------------- | ------------------------------- | --------------------------------------- |
+| `taskRetries`     | `3`                             | Retry count for failed tasks            |
+| `progressFile`    | `"PROGRESS.md"`                 | Progress file path                      |
+| `findingsFile`    | `"docs/test-suite-findings.md"` | Test findings file                      |
+| `commitConfig`    | `{}`                            | `{ prefix, mainBranch, emojiPrefixes }` |
+| `testSuites`      | From `target.testCmds`          | Custom test suite definitions           |
+| `focusTestSuites` | `{}`                            | Test suites per focus area              |
+| `focusDirs`       | `{}`                            | Directories per focus for review        |
+| `skipPhases`      | `new Set()`                     | Phases to skip                          |
+| `children`        | `undefined`                     | Spec MDX files                          |
 
 ## Advanced: Custom Components
 
