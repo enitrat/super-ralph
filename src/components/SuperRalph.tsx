@@ -47,7 +47,11 @@ export type SuperRalphProps = {
   maxConcurrency: number;
   taskRetries: number;
   skipPhases?: Set<string>;
-  children: React.ReactNode;
+  updateProgress: React.ReactElement<UpdateProgressProps>;
+  discover: React.ReactElement<DiscoverProps>;
+  integrationTest: React.ReactElement<IntegrationTestProps>;
+  codebaseReview: React.ReactElement<CodebaseReviewProps>;
+  ticketPipeline: React.ReactElement<TicketPipelineProps>;
 };
 
 export function SuperRalph({
@@ -55,22 +59,18 @@ export function SuperRalph({
   maxConcurrency,
   taskRetries,
   skipPhases = new Set(),
-  children,
+  updateProgress,
+  discover,
+  integrationTest,
+  codebaseReview,
+  ticketPipeline,
 }: SuperRalphProps) {
   const { ctx, completedTicketIds, unfinishedTickets, reviewFindings, progressSummary, categories, outputs, target } = superRalphCtx;
-
-  // Extract child components from children
-  const childArray = React.Children.toArray(children);
-  const updateProgress = childArray.find((c: any) => c?.type === UpdateProgress) as any;
-  const discover = childArray.find((c: any) => c?.type === Discover) as any;
-  const integrationTest = childArray.find((c: any) => c?.type === IntegrationTest) as any;
-  const codebaseReview = childArray.find((c: any) => c?.type === CodebaseReview) as any;
-  const ticketPipeline = childArray.find((c: any) => c?.type === TicketPipeline) as any;
 
   return (
     <Ralph until={false} maxIterations={Infinity} onMaxReached="return-last">
       <Parallel maxConcurrency={maxConcurrency}>
-        {!skipPhases.has("PROGRESS") && updateProgress && (
+        {!skipPhases.has("PROGRESS") && (
           <Task
             id="update-progress"
             output={outputs.progress}
@@ -87,9 +87,9 @@ export function SuperRalph({
           </Task>
         )}
 
-        {!skipPhases.has("CODEBASE_REVIEW") && codebaseReview && React.cloneElement(codebaseReview.props.children, { target: codebaseReview.props.target })}
+        {!skipPhases.has("CODEBASE_REVIEW") && React.cloneElement(codebaseReview.props.children, { target: codebaseReview.props.target })}
 
-        {!skipPhases.has("DISCOVER") && discover && (
+        {!skipPhases.has("DISCOVER") && (
           <Task
             id="discover"
             output={outputs.discover}
@@ -98,7 +98,7 @@ export function SuperRalph({
             retries={taskRetries}
           >
             <DiscoverPrompt
-              projectName={updateProgress?.props.projectName ?? "Project"}
+              projectName={updateProgress.props.projectName}
               specsPath={discover.props.specsPath}
               referenceFiles={discover.props.referenceFiles}
               categories={categories}
@@ -109,7 +109,7 @@ export function SuperRalph({
           </Task>
         )}
 
-        {!skipPhases.has("INTEGRATION_TEST") && integrationTest && (
+        {!skipPhases.has("INTEGRATION_TEST") && (
           <Parallel maxConcurrency={maxConcurrency}>
             {categories.map(({ id, name }) => {
               const suiteInfo = integrationTest.props.categoryTestSuites[id] ?? { suites: [], setupHints: [], testDirs: [] };
@@ -138,7 +138,7 @@ export function SuperRalph({
 
         {unfinishedTickets.map((ticket: any) => (
           <Worktree key={ticket.id} id={`wt-${ticket.id}`} path={`/tmp/workflow-wt-${ticket.id}`}>
-            {ticketPipeline && React.cloneElement(ticketPipeline.props.children, { target, ticket, ctx })}
+            {React.cloneElement(ticketPipeline.props.children, { target: ticketPipeline.props.target, ticket, ctx })}
           </Worktree>
         ))}
       </Parallel>
