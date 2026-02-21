@@ -46,6 +46,7 @@ export default smithers((ctx) => (
     referenceFiles={["docs/reference/"]}
     buildCmds={{ go: "go build ./...", rust: "cargo build" }}
     testCmds={{ go: "go test ./...", rust: "cargo test" }}
+    postLandChecks={["make e2e"]}
     codeStyle="Go: snake_case, Rust: snake_case"
     reviewChecklist={["Spec compliance", "Test coverage", "Security"]}
     maxConcurrency={12}
@@ -75,24 +76,68 @@ Ralph (infinite loop)
   ├─ CodebaseReview → per-focus reviews → tickets
   ├─ Discover → new feature tickets
   ├─ IntegrationTest → per-focus test runs
-  └─ TicketPipeline × N (parallel, in worktrees)
-     ├─ Research → gather context
-     ├─ Plan → TDD plan
-     ├─ ValidationLoop (loops until approved)
-     │  ├─ Implement → write tests + code
-     │  ├─ Test → run all tests
-     │  ├─ BuildVerify → check compilation
-     │  ├─ SpecReview + CodeReview (parallel)
-     │  └─ ReviewFix → fix issues
-     └─ Report → completion summary
+  └─ Per Ticket × N (parallel)
+     ├─ Phase 1: Development (in worktree, on branch ticket/<id>)
+     │  ├─ Research → gather context
+     │  ├─ Plan → TDD plan
+     │  ├─ ValidationLoop (loops until approved)
+     │  │  ├─ Implement → write tests + code
+     │  │  ├─ Test → run fast tests (pre-land checks)
+     │  │  ├─ BuildVerify → check compilation
+     │  │  ├─ SpecReview + CodeReview (parallel)
+     │  │  └─ ReviewFix → fix issues
+     │  └─ Report → completion summary
+     └─ Phase 2: Landing (serialized merge queue, maxConcurrency=1)
+        └─ Land → rebase onto main, semantic conflict check, run slow CI (post-land checks), fast-forward merge, push
 ```
+
+### Branch-per-ticket merge queue
+
+Each ticket gets its own jj bookmark (`ticket/<id>`) in a dedicated worktree. Development happens in parallel across tickets, but **landing is serialized** through a `<MergeQueue>` — only one ticket merges to main at a time.
+
+The Land agent:
+1. Fetches latest main and reviews what other tickets landed since branching (catches semantic conflicts that don't show up as git conflicts)
+2. Rebases the ticket branch onto main
+3. Runs post-land CI checks (e2e tests, integration tests — the slow stuff)
+4. Fast-forward merges main to the rebased branch tip
+5. Pushes main and cleans up the ticket bookmark
+
+This means **no code lands on main without passing reviews AND post-rebase CI**.
+
+### Pre-land vs post-land checks
+
+Configure which CI checks run in each phase:
+
+```tsx
+<SuperRalph
+  // Fast checks run in the worktree during development (driven by testCmds/buildCmds/testSuites)
+  testCmds={{ go: "go test ./...", rust: "cargo test" }}
+  buildCmds={{ go: "go build ./..." }}
+
+  // Slow checks run after rebase in the merge queue
+  postLandChecks={["make e2e", "bun test tests/integration/"]}
+  {...otherProps}
+/>
+```
+
+If `postLandChecks` is not provided, it falls back to `testCmds`.
+
+### jj-native workflow
+
+All agents use jj commands instead of git:
+- `jj describe` + `jj new` instead of `git commit`
+- `jj bookmark set ticket/<id>` + `jj git push --bookmark` instead of `git push`
+- `jj rebase` for landing instead of `git merge`
+
+Requires a jj-colocated repo (`jj git init --colocate`).
 
 This opinionated workflow is optimized in following ways:
 
 - Observability: multiple reporting steps and lots of data stored in sqlite
 - Quality: via CI checks, review loops, and context-engineered research-plan-implement steps
 - Planning: Optimizes ralph by in real time generating tickets rather than hardcoding them up front
-- Parallelization: All tickets implemented in a JJ Workspace in parallel and then merged back into the main branch as stacked changes
+- Parallelization: All tickets implemented in a JJ Workspace in parallel with branch-per-ticket isolation
+- Safe landing: Serialized merge queue with semantic conflict detection and post-rebase CI
 
 ## Advanced: Custom Components
 
