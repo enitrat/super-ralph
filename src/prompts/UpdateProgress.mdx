@@ -9,7 +9,7 @@ Do NOT run build commands, test commands, or compilation. Those are expensive an
 ## Steps
 
 1. Read the current progress file at {props.progressFile} (create if it doesn't exist)
-2. Read git log for recent commits: `git log --oneline -50`
+2. Read jj log for recent commits: `jj log --limit 50`
 3. Read existing output from pipeline steps if available
 4. Browse the codebase to assess current state
 5. Update {props.progressFile} with:
@@ -24,7 +24,8 @@ Do NOT run build commands, test commands, or compilation. Those are expensive an
 
 After updating:
 ```
-git add {props.progressFile}
-git commit -m "{props.commitMessage || '📝 docs: update progress report'}"
-git pull --rebase origin main && git push
+jj describe -m "{props.commitMessage || '📝 docs: update progress report'}"
+jj new
+jj bookmark set main -r @-
+jj git push --bookmark main
 ```

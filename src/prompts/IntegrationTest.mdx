@@ -43,9 +43,10 @@ If the file doesn't exist yet, you'll create it.
 4. Update `{props.findingsFile}` with your findings for this category
 5. Commit and push:
 ```
-git add {props.findingsFile}
-git commit -m "{props.commitMessage || `📊 test(${props.categoryId}): update integration test findings`}"
-git pull --rebase origin main && git push
+jj describe -m "{props.commitMessage || `📊 test(${props.categoryId}): update integration test findings`}"
+jj new
+jj bookmark set main -r @-
+jj git push --bookmark main
 ```
 
 ## CRITICAL: Document Blockers
