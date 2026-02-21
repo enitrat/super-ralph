@@ -87,22 +87,43 @@ Ralph (infinite loop)
      │  │  ├─ SpecReview + CodeReview (parallel)
      │  │  └─ ReviewFix → fix issues
      │  └─ Report → completion summary
-     └─ Phase 2: Landing (serialized merge queue, maxConcurrency=1)
-        └─ Land → rebase onto main, semantic conflict check, run slow CI (post-land checks), fast-forward merge, push
+     └─ Phase 2: Landing (speculative merge queue)
+        └─ Land → speculative rebase stack, parallel post-land CI, eviction + cascade re-test, fast-forward main, push
 ```
 
-### Branch-per-ticket merge queue
+### Real speculative merge queue
 
-Each ticket gets its own jj bookmark (`ticket/<id>`) in a dedicated worktree. Development happens in parallel across tickets, but **landing is serialized** through a `<MergeQueue>` — only one ticket merges to main at a time.
+Each ticket gets its own jj bookmark (`ticket/<id>`) in a dedicated worktree. Development happens in parallel across tickets, and landing uses a **stateful speculative queue**:
 
-The Land agent:
-1. Fetches latest main and reviews what other tickets landed since branching (catches semantic conflicts that don't show up as git conflicts)
-2. Rebases the ticket branch onto main
-3. Runs post-land CI checks (e2e tests, integration tests — the slow stuff)
-4. Fast-forward merges main to the rebased branch tip
-5. Pushes main and cleans up the ticket bookmark
+1. Queue order is computed from completed tickets
+2. Tickets are speculatively rebased as a stack (`A <- B <- C`)
+3. Post-land CI runs in parallel for the speculative window
+4. Passing prefix is landed by fast-forwarding `main` to the furthest passing ticket
+5. Failed ticket is evicted with context; downstream speculative tickets are re-rebased/re-tested
+6. Ticket bookmark/worktree cleanup happens on merge and eviction
 
-This means **no code lands on main without passing reviews AND post-rebase CI**.
+This means **no code lands on main without passing reviews AND post-rebase CI on speculative state**.
+
+### Dedicated merge queue agent
+
+`SuperRalph` now supports a dedicated coordinator agent:
+
+```tsx
+<SuperRalph
+  agents={{
+    planning: ...,
+    implementation: ...,
+    testing: ...,
+    reviewing: ...,
+    reporting: ...,
+    mergeQueue: new CodexAgent({ model: "gpt-5.3-codex", cwd: process.cwd(), yolo: true }),
+  }}
+  mergeQueueOrdering="report-complete-fifo"
+  maxSpeculativeDepth={3}
+  postLandChecks={["make e2e", "bun test tests/integration/"]}
+  {...otherProps}
+/>
+```
 
 ### Pre-land vs post-land checks
 

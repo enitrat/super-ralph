@@ -6,6 +6,8 @@ Category: {props.ticketCategory}
 
 Your job is to gather all reference materials needed to implement this ticket.
 
+{props.evictionContext ? `\n## Merge Queue Eviction Context\n\nThis ticket was previously evicted from the speculative merge queue.\nUse this context to focus your investigation on the failure/conflict root cause:\n\n${props.evictionContext}\n` : ''}
+
 ## Reference Paths
 
 {props.referencePaths && props.referencePaths.length > 0 ? `Read these reference paths:\n${props.referencePaths.map(p => `- ${p}`).join('\n')}` : ''}

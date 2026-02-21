@@ -146,5 +146,11 @@ export const ralphOutputSchemas = {
     mergeCommit: z.string().nullable(),
     ciPassed: z.boolean(),
     summary: z.string(),
+    evicted: z.boolean().default(false),
+    evictionReason: z.string().nullable().optional(),
+    evictionDetails: z.string().nullable().optional(),
+    attemptedLog: z.string().nullable().optional(),
+    attemptedDiffSummary: z.string().nullable().optional(),
+    landedOnMainSinceBranch: z.string().nullable().optional(),
   }),
 };

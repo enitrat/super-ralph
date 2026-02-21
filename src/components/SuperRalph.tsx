@@ -1,7 +1,7 @@
 import { Ralph, Parallel, Sequence, Worktree, Task, MergeQueue } from "smithers-orchestrator";
 import type { SmithersCtx } from "smithers-orchestrator";
 import { selectAllTickets, selectReviewTickets, selectProgressSummary, selectImplement, selectTestResults, selectSpecReview, selectCodeReviews, selectResearch, selectPlan, selectTicketReport, selectLand } from "../selectors";
-import type { RalphOutputs, Ticket } from "../selectors";
+import type { RalphOutputs } from "../selectors";
 import React, { type ReactElement, type ReactNode } from "react";
 import UpdateProgressPrompt from "../prompts/UpdateProgress.mdx";
 import DiscoverPrompt from "../prompts/Discover.mdx";
@@ -15,8 +15,14 @@ import SpecReviewPrompt from "../prompts/SpecReview.mdx";
 import CodeReviewPrompt from "../prompts/CodeReview.mdx";
 import ReviewFixPrompt from "../prompts/ReviewFix.mdx";
 import ReportPrompt from "../prompts/Report.mdx";
-import LandPrompt from "../prompts/Land.mdx";
 import CategoryReviewPrompt from "../prompts/CategoryReview.mdx";
+import {
+  buildSpeculativeMergeQueuePrompt,
+  createSpeculativeMergeQueueAgent,
+  type MergeQueueOrderingStrategy,
+  type MergeQueueRequest,
+  type MergeQueueTicket,
+} from "../mergeQueue/coordinator";
 
 // Main component props (simple API)
 export type SuperRalphProps = {
@@ -44,6 +50,7 @@ export type SuperRalphProps = {
     testing: any | [any, any];
     reviewing: any | [any, any];
     reporting: any | [any, any];
+    mergeQueue?: any | [any, any];
   };
 
   // Configuration
@@ -65,6 +72,12 @@ export type SuperRalphProps = {
   preLandChecks?: string[];
   /** Slow CI checks run after rebase in the merge queue (e2e tests, integration tests, full suite) */
   postLandChecks?: string[];
+  /** Queue ordering strategy for speculative land queue */
+  mergeQueueOrdering?: MergeQueueOrderingStrategy;
+  /** Max number of speculative queue entries to rebase + test in parallel */
+  maxSpeculativeDepth?: number;
+  /** Merge queue id used to isolate coordinator state */
+  mergeQueueId?: string;
   skipPhases?: Set<string>;
 
   // Advanced: Override any step with custom component
@@ -91,6 +104,23 @@ function normalizeAgent(agentOrArray: any | any[]): any | any[] {
   return agentOrArray; // Just return as-is, Task handles arrays now
 }
 
+function readIteration(row: unknown): number {
+  const n = Number((row as any)?.iteration);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatEvictionContext(land: any): string | null {
+  if (!land || land.merged === true || land.evicted !== true) return null;
+  const sections = [
+    land.evictionReason ? `Reason: ${land.evictionReason}` : null,
+    land.evictionDetails ? `Details:\n${land.evictionDetails}` : null,
+    land.attemptedLog ? `Attempted commit history:\n${land.attemptedLog}` : null,
+    land.attemptedDiffSummary ? `Attempted diff summary:\n${land.attemptedDiffSummary}` : null,
+    land.landedOnMainSinceBranch ? `Mainline changes since branch point:\n${land.landedOnMainSinceBranch}` : null,
+  ].filter(Boolean);
+  return sections.length > 0 ? sections.join("\n\n") : null;
+}
+
 export function SuperRalph({
   ctx,
   focuses,
@@ -114,6 +144,9 @@ export function SuperRalph({
   focusDirs = {},
   preLandChecks = [],
   postLandChecks = [],
+  mergeQueueOrdering = "report-complete-fifo",
+  maxSpeculativeDepth = 3,
+  mergeQueueId = "land-queue",
   skipPhases = new Set(),
 
   // Advanced overrides
@@ -145,6 +178,40 @@ export function SuperRalph({
   const testingAgent = normalizeAgent(agents.testing);
   const reviewingAgent = normalizeAgent(agents.reviewing);
   const reportingAgent = normalizeAgent(agents.reporting);
+  const mergeQueueAgent = normalizeAgent(
+    agents.mergeQueue ?? createSpeculativeMergeQueueAgent(),
+  );
+
+  const ciCommands = postLandChecks.length > 0 ? postLandChecks : Object.values(testCmds);
+
+  const ticketState = unfinishedTickets.map((ticket) => {
+    const latestLand = selectLand(ctx, ticket.id, outputs);
+    const latestReport = selectTicketReport(ctx, ticket.id, outputs);
+    const landed = latestLand?.merged === true;
+    const evictedPendingRework = latestLand?.evicted === true && latestLand?.merged !== true;
+    const reportComplete = latestReport?.status === "complete" && !evictedPendingRework;
+    const queueTicket: MergeQueueTicket = {
+      ticketId: ticket.id,
+      ticketTitle: ticket.title,
+      ticketCategory: ticket.category,
+      priority: ticket.priority,
+      reportIteration: readIteration(latestReport),
+      worktreePath: `/tmp/workflow-wt-${ticket.id}`,
+    };
+    return {
+      ticket,
+      latestLand,
+      latestReport,
+      landed,
+      reportComplete,
+      queueTicket,
+      evictionContext: formatEvictionContext(latestLand),
+    };
+  });
+
+  const queueSnapshot = ticketState
+    .filter((state) => state.reportComplete && state.landed !== true)
+    .map((state) => state.queueTicket);
 
   return (
     <Ralph until={false} maxIterations={Infinity} onMaxReached="return-last">
@@ -206,13 +273,27 @@ export function SuperRalph({
           </Parallel>
         ))}
 
-        {unfinishedTickets.map((ticket: Ticket) => {
+        {ticketState.map((ticketRuntime) => {
+          const ticket = ticketRuntime.ticket;
           const researchData = selectResearch(ctx, ticket.id, outputs);
           const planData = selectPlan(ctx, ticket.id, outputs);
           const contextFilePath = researchData?.contextFilePath ?? `docs/context/${ticket.id}.md`;
           const planFilePath = planData?.planFilePath ?? `docs/plans/${ticket.id}.md`;
-          const landed = selectLand(ctx, ticket.id, outputs)?.merged === true;
-          const reportComplete = selectTicketReport(ctx, ticket.id, outputs)?.status === "complete";
+          const landed = ticketRuntime.landed;
+          const reportComplete = ticketRuntime.reportComplete;
+          const evictionContext = ticketRuntime.evictionContext;
+
+          const mergeQueueRequest: MergeQueueRequest = {
+            runId: ctx.runId,
+            queueId: mergeQueueId,
+            repoRoot: process.cwd(),
+            postLandChecks: ciCommands,
+            orderingStrategy: mergeQueueOrdering,
+            maxSpeculativeDepth,
+            ticket: ticketRuntime.queueTicket,
+            queueSnapshot,
+            readyForQueue: reportComplete,
+          };
 
           return (
             <Sequence key={ticket.id} skipIf={landed}>
@@ -230,6 +311,7 @@ export function SuperRalph({
                         relevantFiles={ticket.relevantFiles}
                         contextFilePath={contextFilePath}
                         referencePaths={[specsPath, ...referenceFiles]}
+                        evictionContext={evictionContext}
                       />
                     </Task>
                   )}
@@ -244,6 +326,7 @@ export function SuperRalph({
                         acceptanceCriteria={ticket.acceptanceCriteria ?? []}
                         contextFilePath={contextFilePath}
                         researchSummary={researchData?.summary ?? null}
+                        evictionContext={evictionContext}
                         planFilePath={planFilePath}
                         tddPatterns={["Write tests FIRST, then implementation"]}
                         commitPrefix={prefix}
@@ -290,6 +373,7 @@ export function SuperRalph({
                                 contextFilePath={contextFilePath}
                                 implementationSteps={planData?.implementationSteps ?? null}
                                 previousImplementation={latestImplement ?? null}
+                                evictionContext={evictionContext}
                                 reviewFeedback={reviewFeedback}
                                 failingTests={latestTest?.failingSummary ?? null}
                                 testWritingGuidance={["Write unit tests AND integration tests"]}
@@ -414,16 +498,11 @@ export function SuperRalph({
                 </Sequence>
               </Worktree>
 
-              {/* Phase 2: Landing (in main repo, serialized via merge queue) */}
-              <MergeQueue id="land-queue" maxConcurrency={1}>
+              {/* Phase 2: Landing (stateful speculative merge queue coordinator) */}
+              <MergeQueue id={mergeQueueId} maxConcurrency={Math.max(1, maxSpeculativeDepth)}>
                 {customLand || (
-                  <Task id={`${ticket.id}:land`} output={outputs.land} agent={implementationAgent} retries={taskRetries}>
-                    <LandPrompt
-                      ticketId={ticket.id}
-                      ticketTitle={ticket.title}
-                      ticketCategory={ticket.category}
-                      ciCommands={postLandChecks.length > 0 ? postLandChecks : Object.values(testCmds)}
-                    />
+                  <Task id={`${ticket.id}:land`} output={outputs.land} agent={mergeQueueAgent} retries={taskRetries}>
+                    {buildSpeculativeMergeQueuePrompt(mergeQueueRequest)}
                   </Task>
                 )}
               </MergeQueue>

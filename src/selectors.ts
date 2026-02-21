@@ -80,7 +80,7 @@ export function selectAllTickets(ctx: SmithersCtx<RalphOutputs>, focuses: Readon
 }
 
 export function selectTicketReport(ctx: SmithersCtx<RalphOutputs>, ticketId: string, outputs: RalphOutputs) {
-  return ctx.outputMaybe(outputs.report, { nodeId: `${ticketId}:report` });
+  return ctx.latest("report", `${ticketId}:report`);
 }
 
 export function selectResearch(ctx: SmithersCtx<RalphOutputs>, ticketId: string, outputs: RalphOutputs) {
@@ -104,7 +104,7 @@ export function selectSpecReview(ctx: SmithersCtx<RalphOutputs>, ticketId: strin
 }
 
 export function selectLand(ctx: SmithersCtx<RalphOutputs>, ticketId: string, outputs: RalphOutputs) {
-  return ctx.outputMaybe(outputs.land, { nodeId: `${ticketId}:land` });
+  return ctx.latest("land", `${ticketId}:land`);
 }
 
 export function selectCodeReviews(ctx: SmithersCtx<RalphOutputs>, ticketId: string, outputs: RalphOutputs) {
