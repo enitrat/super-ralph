@@ -20,31 +20,39 @@ export type SuperRalphAgents = {
   discover: { agent: any; fallback: any };
 };
 
-export type SuperRalphConfig = {
-  name: string;
-  maxConcurrency: number;
-  taskRetries: number;
-  categories: ReadonlyArray<{ readonly id: string; readonly name: string }>;
-  outputs: any; // Smithers outputs object
-  categoryReferencePaths: Record<string, string[]>;
-  CodebaseReview: React.ComponentType<{ target: any }>;
-  TicketPipeline: React.ComponentType<{ target: any; ticket: any; ctx: SmithersCtx<any> }>;
-  IntegrationTest: React.ComponentType<{ target: any }>;
-  target: any; // Project-specific target config (build cmds, test cmds, code style, etc.)
-};
-
 export type SuperRalphProps = {
   ctx?: SmithersCtx<any>;
   superRalphCtx?: SuperRalphContext;
   prompts: SuperRalphPrompts;
   agents: SuperRalphAgents;
-  config: SuperRalphConfig;
+  maxConcurrency: number;
+  taskRetries: number;
+  categories: ReadonlyArray<{ readonly id: string; readonly name: string }>;
+  outputs: any;
+  target: any;
+  CodebaseReview: React.ComponentType<{ target: any }>;
+  TicketPipeline: React.ComponentType<{ target: any; ticket: any; ctx: SmithersCtx<any> }>;
+  IntegrationTest: React.ComponentType<{ target: any }>;
   skipPhases?: Set<string>;
 };
 
-export function SuperRalph({ ctx, superRalphCtx, prompts, agents, config, skipPhases = new Set() }: SuperRalphProps) {
+export function SuperRalph({
+  ctx,
+  superRalphCtx,
+  prompts,
+  agents,
+  maxConcurrency,
+  taskRetries,
+  categories,
+  outputs,
+  target,
+  CodebaseReview,
+  TicketPipeline,
+  IntegrationTest,
+  skipPhases = new Set(),
+}: SuperRalphProps) {
   // Controlled component: use provided superRalphCtx, or compute it from ctx
-  const workflowState = superRalphCtx ?? (ctx ? useSuperRalph(ctx, { categories: config.categories, outputs: config.outputs }) : null);
+  const workflowState = superRalphCtx ?? (ctx ? useSuperRalph(ctx, { categories, outputs }) : null);
 
   if (!workflowState) {
     throw new Error("SuperRalph requires either ctx or superRalphCtx prop");
@@ -52,18 +60,17 @@ export function SuperRalph({ ctx, superRalphCtx, prompts, agents, config, skipPh
 
   const { completedTicketIds, unfinishedTickets, reviewFindings } = workflowState;
   const { UpdateProgress, Discover } = prompts;
-  const { CodebaseReview, TicketPipeline, IntegrationTest, target } = config;
 
   return (
     <Ralph until={false} maxIterations={Infinity} onMaxReached="return-last">
-      <Parallel maxConcurrency={config.maxConcurrency}>
+      <Parallel maxConcurrency={maxConcurrency}>
         {!skipPhases.has("PROGRESS") && (
           <Task
             id="update-progress"
-            output={config.outputs.progress}
+            output={outputs.progress}
             agent={agents.updateProgress.agent}
             fallbackAgent={agents.updateProgress.fallback}
-            retries={config.taskRetries}
+            retries={taskRetries}
           >
             <UpdateProgress completedTickets={completedTicketIds} />
           </Task>
@@ -74,13 +81,13 @@ export function SuperRalph({ ctx, superRalphCtx, prompts, agents, config, skipPh
         {!skipPhases.has("DISCOVER") && (
           <Task
             id="discover"
-            output={config.outputs.discover}
+            output={outputs.discover}
             agent={agents.discover.agent}
             fallbackAgent={agents.discover.fallback}
-            retries={config.taskRetries}
+            retries={taskRetries}
           >
             <Discover
-              categories={config.categories}
+              categories={categories}
               completedTicketIds={completedTicketIds}
               previousProgress={workflowState.progressSummary}
               reviewFindings={reviewFindings}

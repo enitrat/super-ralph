@@ -38,6 +38,14 @@ export default smithers((ctx) => {
     <Workflow name="my-workflow">
       <SuperRalph
         ctx={ctx}
+        maxConcurrency={12}
+        taskRetries={3}
+        categories={categories}
+        outputs={outputs}
+        target={getTarget()}
+        CodebaseReview={CodebaseReview}
+        TicketPipeline={TicketPipeline}
+        IntegrationTest={IntegrationTest}
         prompts={{
           UpdateProgress: UpdateProgressPrompt,
           Discover: DiscoverPrompt,
@@ -77,37 +85,25 @@ export default smithers((ctx) => {
             }),
           },
         }}
-        config={{
-          name: "my-workflow",
-          maxConcurrency: 12,
-          taskRetries: 3,
-          categories,
-          outputs,
-          categoryReferencePaths,
-          CodebaseReview,
-          TicketPipeline,
-          IntegrationTest,
-          target: {
-            id: "my-project",
-            name: "My Project",
-            buildCmds: { go: "go build ./...", rust: "cargo build" },
-            testCmds: { go: "go test ./...", rust: "cargo test", e2e: "bun test" },
-            fmtCmds: { go: "gofmt -w .", rust: "cargo fmt" },
-            specsPath: "docs/specs/",
-            codeStyle: "Go: snake_case, Rust: snake_case, JSON: snake_case",
-            reviewChecklist: [
-              "Spec compliance",
-              "Architecture patterns",
-              "Test coverage",
-              "Security",
-            ],
-            referenceFiles: ["docs/reference/"],
-          },
-        }}
       />
     </Workflow>
   );
 });
+```
+
+Where `getTarget()` returns your project config:
+```typescript
+{
+  id: "my-project",
+  name: "My Project",
+  buildCmds: { go: "go build ./...", rust: "cargo build" },
+  testCmds: { go: "go test ./...", rust: "cargo test", e2e: "bun test" },
+  fmtCmds: { go: "gofmt -w .", rust: "cargo fmt" },
+  specsPath: "docs/specs/",
+  codeStyle: "Go: snake_case, Rust: snake_case, JSON: snake_case",
+  reviewChecklist: ["Spec compliance", "Architecture patterns", "Test coverage"],
+  referenceFiles: ["docs/reference/"],
+}
 ```
 
 ### Controlled (use hook for custom logic)
@@ -178,26 +174,35 @@ Each agent is a Smithers agent instance (ClaudeCodeAgent, KimiAgent, GeminiAgent
 - Permissions (yolo/dangerouslySkipPermissions)
 - Working directory (cwd)
 
-### Config
-All project-specific configuration:
+### Props
 
-- `name` - Workflow name
-- `maxConcurrency` - Max parallel tasks
-- `taskRetries` - Retry count for failed tasks
-- `categories` - Your project's work categories (e.g., `[{ id: "auth", name: "Authentication" }, ...]`)
-- `outputs` - Your Smithers output schemas
-- `categoryReferencePaths` - Map category IDs to reference doc paths
-- `target` - Your project config:
-  - `buildCmds` - Build commands by language (go, rust, etc.)
+All configuration is passed as direct props (no nested `config` object):
+
+**Workflow settings:**
+- `maxConcurrency` - Max parallel tasks (number)
+- `taskRetries` - Retry count for failed tasks (number)
+- `skipPhases` - Optional Set of phase names to skip (Set<string>)
+
+**Project schema:**
+- `categories` - Your work categories: `[{ id: string, name: string }, ...]`
+- `outputs` - Your Smithers output schemas object
+
+**Project config:**
+- `target` - Your project configuration object:
+  - `id` - Project identifier
+  - `name` - Project name
+  - `buildCmds` - Build commands by language
   - `testCmds` - Test commands by type
   - `fmtCmds` - Format commands
   - `specsPath` - Path to specs directory
   - `codeStyle` - Code style guidelines
   - `reviewChecklist` - Code review checklist items
   - `referenceFiles` - Reference documentation paths
-- `CodebaseReview` - Your codebase review orchestrator component
-- `TicketPipeline` - Your ticket pipeline orchestrator component
-- `IntegrationTest` - Your integration test orchestrator component
+
+**Child components:**
+- `CodebaseReview` - Your codebase review orchestrator
+- `TicketPipeline` - Your ticket pipeline orchestrator
+- `IntegrationTest` - Your integration test orchestrator
 
 ## What SuperRalph Provides
 
