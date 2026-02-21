@@ -20,16 +20,13 @@ import { KimiAgent, GeminiAgent, ClaudeCodeAgent, CodexAgent } from "smithers-or
 // 1. Create Smithers with built-in schemas
 const { smithers, outputs } = createSmithers(ralphOutputSchemas, { dbPath: "./workflow.db" });
 
-// 2. Define your work focuses (areas of work to organize tickets)
-const focuses = [
-  { id: "auth", name: "Authentication" },  // Work focus: authentication system
-  { id: "api", name: "API Server" },       // Work focus: API endpoints
-];
-
-// 3. Create workflow
+// 2. Create workflow
 export default smithers((ctx) => {
   const superRalphCtx = useSuperRalph(ctx, {
-    focuses,                                          // Work areas for organizing tickets
+    focuses: [                                         // Work areas for organizing tickets
+      { id: "auth", name: "Authentication" },
+      { id: "api", name: "API Server" },
+    ],
     outputs,                                           // Smithers output schemas
     target: {                                          // Project configuration
       id: "my-project",                                // Project ID
@@ -65,7 +62,10 @@ export default smithers((ctx) => {
       integrationTest={                 // How to run integration tests
         <SuperRalph.IntegrationTest
           agent={new ClaudeCodeAgent({ model: "claude-sonnet-4-6", cwd: process.cwd() })}  // Primary agent
-          focuses={focuses}                      // Run tests for each focus area
+          focuses={[                             // Run tests for each focus area
+            { id: "auth", name: "Authentication" },
+            { id: "api", name: "API Server" },
+          ]}
           categoryTestSuites={{                   // Test suites per focus
             auth: {
               suites: ["Auth tests"],            // Test suite names
