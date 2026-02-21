@@ -31,6 +31,7 @@ import { SuperRalph } from "./components/SuperRalph";
 import type { SuperRalphProps, SuperRalphAgents, SuperRalphPromptConfig } from "./components/SuperRalph";
 import { useSuperRalph } from "./hooks/useSuperRalph";
 import type { SuperRalphContext, UseSuperRalphConfig } from "./hooks/useSuperRalph";
+import { ralphOutputSchemas } from "./schemas";
 
 export {
   // Selectors
@@ -52,6 +53,9 @@ export {
 
   // Components
   SuperRalph,
+
+  // Schemas
+  ralphOutputSchemas,
 };
 
 export type {

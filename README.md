@@ -13,20 +13,12 @@ bun add @evmts/super-ralph smithers-orchestrator
 ## Usage
 
 ```typescript
-import { SuperRalph, useSuperRalph } from "@evmts/super-ralph";
+import { SuperRalph, useSuperRalph, ralphOutputSchemas } from "@evmts/super-ralph";
 import { createSmithers } from "smithers-orchestrator";
 import { KimiAgent, GeminiAgent, ClaudeCodeAgent } from "smithers-orchestrator";
-import { z } from "zod";
 
-// 1. Define schemas
-const outputSchemas = {
-  progress: z.object({ summary: z.string() }),
-  discover: z.object({ tickets: z.array(z.any()) }),
-  category_review: z.object({ suggestedTickets: z.array(z.any()) }),
-  report: z.object({ status: z.enum(["complete", "partial", "blocked"]) }),
-};
-
-const { smithers, outputs } = createSmithers(outputSchemas, { dbPath: "./workflow.db" });
+// 1. Create Smithers with built-in schemas
+const { smithers, outputs } = createSmithers(ralphOutputSchemas, { dbPath: "./workflow.db" });
 
 // 2. Define categories
 const categories = [
