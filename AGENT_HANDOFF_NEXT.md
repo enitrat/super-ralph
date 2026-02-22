@@ -209,19 +209,16 @@ If any tests fail, fix the bugs:
 
 There are some known issues that need fixing:
 
-### Issue 1: import.meta.dir vs import.meta.path
+### Issue 1: ✅ FIXED - Duplicate 'run' argument in CLI
 
-In `src/cli/index.ts` line ~180:
+~~In `src/cli/index.ts` line 521-523, the args array had duplicate 'run':~~
 ```typescript
-const CLI_DIR = dirname(import.meta.path);
+// FIXED in commit 158f683
+// Was: ["bun", "-r", preloadPath, "run", smithersCliPath, "run", workflowPath]
+// Now: ["bun", "-r", preloadPath, smithersCliPath, "run", workflowPath]
 ```
 
-Should be:
-```typescript
-const CLI_DIR = import.meta.dir || dirname(import.meta.path);
-```
-
-Bun uses `import.meta.dir`, Node uses `import.meta.url` → `fileURLToPath()`.
+This has been fixed.
 
 ### Issue 2: ClarifyingQuestions ctx API usage
 
