@@ -281,9 +281,15 @@ function renderWorkflowFile(params: {
 }): string {
   const { promptText, promptSpecPath, repoRoot, dbPath, packageScripts, detectedAgents, fallbackConfig, skipQuestions } = params;
 
+  // Determine if we're running from within the super-ralph repo itself
+  // Check if the repo root contains our source files
+  const isSuperRalphRepo = existsSync(join(repoRoot, 'src/components/SuperRalph.tsx')) &&
+                           existsSync(join(repoRoot, 'src/components/ClarifyingQuestions.tsx'));
+  const importPrefix = isSuperRalphRepo ? '../../src' : 'super-ralph';
+
   return `import React from "react";
 import { createSmithers, ClaudeCodeAgent, CodexAgent } from "smithers-orchestrator";
-import { SuperRalph } from "super-ralph";
+import { SuperRalph } from "${importPrefix}";
 import {
   ClarifyingQuestions,
   InterpretConfig,
@@ -291,8 +297,8 @@ import {
   clarifyingQuestionsOutputSchema,
   interpretConfigOutputSchema,
   monitorOutputSchema,
-} from "super-ralph/components";
-import { getClarificationQuestions } from "super-ralph/cli/clarifications";
+} from "${importPrefix}/components";
+import { getClarificationQuestions } from "${importPrefix}/cli/clarifications";
 
 const REPO_ROOT = ${JSON.stringify(repoRoot)};
 const DB_PATH = ${JSON.stringify(dbPath)};
