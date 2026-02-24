@@ -7,7 +7,6 @@ export type AgentMetadata = {
   id: string;
   type: "claude-code" | "codex" | "gemini" | "kimi" | "amp" | "custom";
   model?: string;
-  tier: "high" | "medium" | "low";
   costPerToken?: number;
 };
 
@@ -160,8 +159,8 @@ export class AgentRegistry {
     const header = `## Agent Pool Status (as of ${now.toISOString()})`;
 
     const tableHeader = [
-      "| Agent | Type | Tier | Success Rate | Avg Duration | Status | Current Task |",
-      "|-------|------|------|-------------|-------------|--------|-------------|",
+      "| Agent | Type | Success Rate | Avg Duration | Status | Current Task |",
+      "|-------|------|-------------|-------------|--------|-------------|",
     ].join("\n");
 
     const rows = stats.map((s) => {
@@ -186,7 +185,7 @@ export class AgentRegistry {
 
       const task = s.currentTaskId ?? "-";
 
-      return `| ${s.id} | ${s.type} | ${s.tier} | ${rateStr} | ${avgStr} | ${status} | ${task} |`;
+      return `| ${s.id} | ${s.type} | ${rateStr} | ${avgStr} | ${status} | ${task} |`;
     });
 
     const failedAgents = stats.filter((s) => s.lastFailureReason);
