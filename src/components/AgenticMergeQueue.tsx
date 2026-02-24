@@ -31,6 +31,8 @@ export type AgenticMergeQueueTicket = {
   priority: "critical" | "high" | "medium" | "low";
   reportComplete: boolean;
   landed: boolean;
+  filesModified: string[];
+  filesCreated: string[];
   worktreePath: string;
 };
 
@@ -59,14 +61,34 @@ function buildQueueStatusTable(tickets: AgenticMergeQueueTicket[]): string {
     (a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority],
   );
 
-  const header = "| # | Ticket ID | Title | Category | Priority | Worktree |";
-  const separator = "|---|-----------|-------|----------|----------|----------|";
+  const header = "| # | Ticket ID | Title | Category | Priority | Files Touched | Worktree |";
+  const separator = "|---|-----------|-------|----------|----------|---------------|----------|";
   const rows = sorted.map(
-    (t, i) =>
-      `| ${i + 1} | ${t.ticketId} | ${t.ticketTitle} | ${t.ticketCategory} | ${t.priority} | ${t.worktreePath} |`,
+    (t, i) => {
+      const allFiles = [...(t.filesModified ?? []), ...(t.filesCreated ?? [])];
+      const fileSummary = allFiles.length > 0 ? allFiles.slice(0, 5).join(", ") + (allFiles.length > 5 ? ` (+${allFiles.length - 5} more)` : "") : "(unknown)";
+      return `| ${i + 1} | ${t.ticketId} | ${t.ticketTitle} | ${t.ticketCategory} | ${t.priority} | ${fileSummary} | ${t.worktreePath} |`;
+    },
   );
 
   return [header, separator, ...rows].join("\n");
+}
+
+function buildFileOverlapAnalysis(tickets: AgenticMergeQueueTicket[]): string {
+  const fileToTickets = new Map<string, string[]>();
+  for (const t of tickets) {
+    for (const f of [...(t.filesModified ?? []), ...(t.filesCreated ?? [])]) {
+      const existing = fileToTickets.get(f) ?? [];
+      existing.push(t.ticketId);
+      fileToTickets.set(f, existing);
+    }
+  }
+  const conflicts = [...fileToTickets.entries()]
+    .filter(([, ids]) => ids.length > 1)
+    .map(([file, ids]) => `- \`${file}\` touched by: ${ids.join(", ")}`);
+
+  if (conflicts.length === 0) return "No file overlaps detected — all tickets can be landed in parallel.";
+  return `**File overlaps detected** (land these tickets sequentially, not speculatively):\n${conflicts.join("\n")}`;
 }
 
 function buildMergeQueuePrompt(
@@ -88,6 +110,8 @@ function buildMergeQueuePrompt(
     ? postLandChecks.map((cmd) => `  - \`${cmd}\``).join("\n")
     : "  - (none configured)";
 
+  const overlapAnalysis = buildFileOverlapAnalysis(readyTickets);
+
   return `# Merge Queue Coordinator
 
 You are the **merge queue coordinator**. You run on the \`${mainBranch}\` branch directly (not in a worktree).
@@ -104,6 +128,12 @@ ${new Date().toISOString()}
 ## Queue Status (${readyTickets.length} ticket(s) ready to land)
 
 ${queueTable}
+
+## File Overlap Analysis
+
+${overlapAnalysis}
+
+**IMPORTANT:** When file overlaps exist, land non-overlapping tickets first (they can be speculative). Then land overlapping tickets one-by-one sequentially, rebasing each onto the updated ${mainBranch} before attempting the next. This prevents the systematic rebase conflicts seen when all tickets diverge from the same base.
 
 ## Instructions
 

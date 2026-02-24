@@ -6,6 +6,40 @@ import { ticketScheduleSchema } from "./components/TicketScheduler";
 import { mergeQueueResultSchema } from "./components/AgenticMergeQueue";
 
 /**
+ * Complexity tiers control which pipeline stages a ticket must complete.
+ * Assigned at discovery time based on the ticket's estimated scope.
+ *
+ * - trivial: Comment cleanup, JSDoc, constant extraction, 1-line config changes
+ * - small:   Single-file refactors, type exports, adding test cases
+ * - medium:  Multi-file features, API changes, hook refactors
+ * - large:   Architectural changes, new subsystems, security-sensitive work
+ */
+export const COMPLEXITY_TIERS = {
+  trivial: ["implement", "build-verify"] as const,
+  small:   ["implement", "test", "build-verify"] as const,
+  medium:  ["research", "plan", "implement", "test", "build-verify", "code-review"] as const,
+  large:   ["research", "plan", "implement", "test", "build-verify", "spec-review", "code-review", "review-fix", "report"] as const,
+} as const;
+
+export type ComplexityTier = keyof typeof COMPLEXITY_TIERS;
+
+/** Get the pipeline stages for a given tier */
+export function getTierStages(tier: ComplexityTier): readonly string[] {
+  return COMPLEXITY_TIERS[tier];
+}
+
+/** Get the final required stage for a tier (used for "ready to land" detection) */
+export function getTierFinalStage(tier: ComplexityTier): string {
+  const stages = COMPLEXITY_TIERS[tier];
+  return stages[stages.length - 1];
+}
+
+/** Check if a given stage is part of a tier's pipeline */
+export function isTierStage(tier: ComplexityTier, stage: string): boolean {
+  return (COMPLEXITY_TIERS[tier] as readonly string[]).includes(stage);
+}
+
+/**
  * Standard output schemas for Ralph workflow pattern.
  * Use these or extend them for your project.
  */
@@ -16,6 +50,8 @@ const discoverTicketSchema = z.object({
   description: z.string(),
   category: z.string(),
   priority: z.enum(["critical", "high", "medium", "low"]),
+  complexityTier: z.enum(["trivial", "small", "medium", "large"])
+    .describe("Pipeline depth tier — trivial (2 stages) to large (full 9-stage pipeline)"),
   acceptanceCriteria: z.array(z.string()).nullable(),
   relevantFiles: z.array(z.string()).nullable(),
   referenceFiles: z.array(z.string()).nullable(),

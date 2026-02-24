@@ -1,6 +1,6 @@
 import { Ralph, Parallel } from "smithers-orchestrator";
 import type { SmithersCtx, AgentLike } from "smithers-orchestrator";
-import { selectAllTickets, selectReviewTickets, selectProgressSummary, selectLand, selectTicketReport } from "../selectors";
+import { selectAllTickets, selectReviewTickets, selectProgressSummary, selectLand, selectTicketReport, selectImplement, isTicketTierComplete } from "../selectors";
 import type { RalphOutputs, Ticket } from "../selectors";
 import React, { type ReactNode } from "react";
 import { Database } from "bun:sqlite";
@@ -108,21 +108,23 @@ export function SuperRalph({
     ticket,
     pipelineStage: computePipelineStage(ctx, ticket.id),
     landed: selectLand(ctx, ticket.id)?.merged === true,
-    reportComplete: (() => {
+    tierComplete: (() => {
       const land = selectLand(ctx, ticket.id);
-      const report = selectTicketReport(ctx, ticket.id);
       const evicted = land?.evicted === true && land?.merged !== true;
-      return report?.status === "complete" && !evicted;
+      if (evicted) return false;
+      return isTicketTierComplete(ctx, ticket.id, ticket.complexityTier);
     })(),
   }));
 
-  // Merge queue tickets
+  // Merge queue tickets — tier-complete tickets are ready to land
   const mergeQueueTickets = ticketStates
-    .filter(t => t.reportComplete && !t.landed)
+    .filter(t => t.tierComplete && !t.landed)
     .map(t => ({
       ticketId: t.ticket.id, ticketTitle: t.ticket.title,
       ticketCategory: t.ticket.category, priority: t.ticket.priority,
-      reportComplete: t.reportComplete, landed: t.landed,
+      reportComplete: t.tierComplete, landed: t.landed,
+      filesModified: selectImplement(ctx, t.ticket.id)?.filesModified ?? [],
+      filesCreated: selectImplement(ctx, t.ticket.id)?.filesCreated ?? [],
       worktreePath: `/tmp/workflow-wt-${t.ticket.id}`,
     }));
 

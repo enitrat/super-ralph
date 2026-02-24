@@ -1,13 +1,15 @@
 /**
- * Super Ralph - Reusable Ralph workflow pattern
+ * Super Ralph Lite - Complexity-aware fork of Super Ralph
  *
  * Encapsulates the ticket-driven development workflow with:
+ * - Complexity-tiered pipelines (trivial/small/medium/large)
  * - Multi-agent code review
  * - TDD validation loops
- * - Automated ticket discovery and prioritization
+ * - Automated ticket discovery with deduplication and batching
+ * - Conflict-aware merge queue
  * - Stacked ticket processing with worktrees
  *
- * Extracted from Plue workflow, generalized for reuse.
+ * Forked from Super Ralph, generalized for mixed-complexity workloads.
  */
 
 import {
@@ -27,9 +29,18 @@ import {
   selectInterpretConfig,
   selectMonitor,
   selectTicketPipelineStage,
+  isTicketTierComplete,
 } from "./selectors";
 
 import type { Ticket, RalphOutputs } from "./selectors";
+
+import {
+  COMPLEXITY_TIERS,
+  getTierStages,
+  getTierFinalStage,
+  isTierStage,
+} from "./schemas";
+import type { ComplexityTier } from "./schemas";
 
 import {
   SuperRalph,
@@ -77,6 +88,12 @@ import type { SuperRalphContext, UseSuperRalphConfig } from "./hooks/useSuperRal
 import { ralphOutputSchemas } from "./schemas";
 
 export {
+  // Complexity Tiers
+  COMPLEXITY_TIERS,
+  getTierStages,
+  getTierFinalStage,
+  isTierStage,
+
   // Selectors
   selectAllTickets,
   selectReviewTickets,
@@ -94,6 +111,7 @@ export {
   selectInterpretConfig,
   selectMonitor,
   selectTicketPipelineStage,
+  isTicketTierComplete,
 
   // Hooks
   useSuperRalph,
@@ -132,6 +150,7 @@ export {
 };
 
 export type {
+  ComplexityTier,
   Ticket,
   RalphOutputs,
   SuperRalphProps,

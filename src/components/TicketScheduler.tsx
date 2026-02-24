@@ -4,6 +4,7 @@ import type { SmithersCtx } from "smithers-orchestrator";
 import { z } from "zod";
 import type { Ticket } from "../selectors";
 import type { ScheduledJob } from "../scheduledTasks";
+import { COMPLEXITY_TIERS, type ComplexityTier } from "../schemas";
 
 // --- Schemas ---
 
@@ -98,7 +99,7 @@ export type TicketState = {
   ticket: Ticket;
   pipelineStage: string;
   landed: boolean;
-  reportComplete: boolean;
+  tierComplete: boolean;
 };
 
 export type TicketSchedulerProps = {
@@ -113,11 +114,19 @@ export type TicketSchedulerProps = {
   completedTicketIds: string[];
 };
 
+function getNextStagesForTier(tier: ComplexityTier, currentStage: string): string {
+  const stages = COMPLEXITY_TIERS[tier] as readonly string[];
+  if (currentStage === "not_started") return stages[0];
+  const idx = stages.indexOf(currentStage);
+  if (idx === -1 || idx >= stages.length - 1) return "(done)";
+  return stages.slice(idx + 1).join(" → ");
+}
+
 function formatTicketTable(tickets: TicketState[]): string {
-  const header = "| ID | Title | Priority | Pipeline Stage | Landed | Report Done |";
-  const sep    = "|----|-------|----------|----------------|--------|-------------|";
-  const rows = tickets.map(({ ticket, pipelineStage, landed, reportComplete }) =>
-    `| ${ticket.id} | ${ticket.title} | ${ticket.priority} | ${pipelineStage} | ${landed ? "✓" : "✗"} | ${reportComplete ? "✓" : "✗"} |`,
+  const header = "| ID | Title | Priority | Tier | Pipeline Stage | Next Stages | Landed | Tier Done |";
+  const sep    = "|----|-------|----------|------|----------------|-------------|--------|-----------|";
+  const rows = tickets.map(({ ticket, pipelineStage, landed, tierComplete }) =>
+    `| ${ticket.id} | ${ticket.title} | ${ticket.priority} | ${ticket.complexityTier} | ${pipelineStage} | ${getNextStagesForTier(ticket.complexityTier, pipelineStage)} | ${landed ? "✓" : "✗"} | ${tierComplete ? "✓" : "✗"} |`,
   );
   return [header, sep, ...rows].join("\n");
 }
@@ -178,18 +187,27 @@ ${focusBlock}
 ## Job Types You Can Schedule
 
 ### Ticket pipeline jobs (require ticketId, focusId=null)
-Each ticket progresses through: research → plan → implement → test → build-verify → spec-review → code-review → review-fix → report
+
+**CRITICAL: Each ticket has a complexity tier that determines its pipeline. Only schedule stages that appear in the ticket's tier.**
+
+Tier pipelines:
+- **trivial** (2 stages): implement → build-verify
+- **small** (3 stages): implement → test → build-verify
+- **medium** (6 stages): research → plan → implement → test → build-verify → code-review
+- **large** (9 stages): research → plan → implement → test → build-verify → spec-review → code-review → review-fix → report
+
+Available stage jobs:
 - \`ticket:research\` — Research the ticket's domain and relevant code
 - \`ticket:plan\` — Create implementation plan (requires research done)
-- \`ticket:implement\` — Write code (requires plan done)
+- \`ticket:implement\` — Write code (requires plan done, or no prerequisites for trivial/small)
 - \`ticket:test\` — Run tests (requires implementation done)
 - \`ticket:build-verify\` — Verify build passes (requires implementation done)
-- \`ticket:spec-review\` — Review against specs (requires implementation done)
-- \`ticket:code-review\` — Code quality review (requires implementation done)
-- \`ticket:review-fix\` — Fix review issues (requires reviews done with issues)
-- \`ticket:report\` — Final status report (requires all above done)
+- \`ticket:spec-review\` — Review against specs (requires implementation done, large tier only)
+- \`ticket:code-review\` — Code quality review (requires implementation done, medium+ tiers)
+- \`ticket:review-fix\` — Fix review issues (requires reviews with issues found, large tier only)
+- \`ticket:report\` — Final status report (requires all above done, large tier only)
 
-**Schedule the NEXT stage for each ticket based on its current pipeline stage.** Don't schedule a stage that's already complete or whose prerequisites aren't met.
+**Schedule the NEXT stage for each ticket based on its current pipeline stage AND its tier.** Look at the "Next Stages" column in the ticket table. Don't schedule stages outside the ticket's tier.
 
 ### Global jobs (ticketId=null)
 - \`discovery\` — Find new tickets to work on (focusId=null, jobId="discovery")
@@ -203,7 +221,7 @@ Each ticket progresses through: research → plan → implement → test → bui
 
 2. **Resume in-progress tickets first.** Tickets further in the pipeline get priority — drive existing work to completion before starting new tickets.
 
-3. **Schedule the correct NEXT stage.** Look at each ticket's pipeline stage and schedule only the next logical step. Example: if a ticket is at "research" stage, schedule "ticket:plan" next.
+3. **Schedule the correct NEXT stage for the ticket's tier.** Look at the "Next Stages" column. For trivial tickets at "not_started", schedule "ticket:implement" directly (skip research/plan). For large tickets at "not_started", schedule "ticket:research". Never schedule a stage outside the ticket's tier pipeline.
 
 4. **Load balance across agents.** Distribute work across ALL available agents. Don't funnel everything through 1-2 favorites. Every agent should get work when there are enough jobs.
 
@@ -214,6 +232,10 @@ Each ticket progresses through: research → plan → implement → test → bui
 7. **Don't double-schedule.** Check the "Currently Running Jobs" table — never schedule a job that's already running or a second pipeline job for a ticket that already has one running.
 
 8. **Maximize cheap agents.** Use the cheapest suitable agent for each task. Only escalate to expensive agents when the task genuinely requires it.
+
+9. **Conditional review-fix.** Only schedule \`ticket:review-fix\` when a preceding review (spec-review or code-review) returned severity > "none". If all reviews passed clean, skip review-fix and proceed to the next stage.
+
+10. **Respect tier completion.** When a ticket's "Tier Done" column shows ✓, do NOT schedule any more pipeline stages for it — it is ready for the merge queue.
 
 ## Instructions
 Output exactly the jobs to enqueue in the \`jobs\` array. Each job fills one concurrency slot.`;

@@ -1,5 +1,6 @@
 import type { SmithersCtx } from "smithers-orchestrator";
 import type { ralphOutputSchemas } from "./schemas";
+import { COMPLEXITY_TIERS, getTierStages, getTierFinalStage, type ComplexityTier } from "./schemas";
 
 /**
  * Generic selectors for Ralph workflow pattern.
@@ -15,6 +16,7 @@ export interface Ticket {
   description: string;
   category: string;
   priority: "critical" | "high" | "medium" | "low";
+  complexityTier: ComplexityTier;
   acceptanceCriteria?: string[];
   relevantFiles?: string[];
   referenceFiles?: string[];
@@ -46,6 +48,12 @@ function normalizePriority(value: unknown): Ticket["priority"] {
     : "medium";
 }
 
+function normalizeComplexityTier(value: unknown): ComplexityTier {
+  return value === "trivial" || value === "small" || value === "medium" || value === "large"
+    ? value
+    : "medium";
+}
+
 function normalizeTicket(raw: unknown): Ticket | null {
   if (!raw || typeof raw !== "object") return null;
   const source = raw as Record<string, unknown>;
@@ -57,6 +65,7 @@ function normalizeTicket(raw: unknown): Ticket | null {
     description: typeof source.description === "string" ? source.description : "",
     category: typeof source.category === "string" && source.category.trim() ? source.category.trim() : "general",
     priority: normalizePriority(source.priority),
+    complexityTier: normalizeComplexityTier(source.complexityTier),
     acceptanceCriteria: toStringList(source.acceptanceCriteria),
     relevantFiles: toStringList(source.relevantFiles),
     referenceFiles: toStringList(source.referenceFiles),
@@ -64,12 +73,12 @@ function normalizeTicket(raw: unknown): Ticket | null {
 }
 
 // Type helper for output inference
-type OutputType<K extends SchemaKey> = ReturnType<SmithersCtx<RalphOutputs>["outputMaybe"]> extends infer R 
-  ? R 
+type OutputType<K extends SchemaKey> = ReturnType<SmithersCtx<RalphOutputs>["outputMaybe"]> extends infer R
+  ? R
   : unknown;
 
 export function selectReviewTickets(
-  ctx: SmithersCtx<RalphOutputs>, 
+  ctx: SmithersCtx<RalphOutputs>,
   focuses: ReadonlyArray<{ readonly id: string }>
 ): { tickets: Ticket[]; findings: string | null } {
   const tickets: Ticket[] = [];
@@ -120,7 +129,7 @@ export function selectProgressSummary(ctx: SmithersCtx<RalphOutputs>): string | 
 }
 
 export function selectAllTickets(
-  ctx: SmithersCtx<RalphOutputs>, 
+  ctx: SmithersCtx<RalphOutputs>,
   focuses: ReadonlyArray<{ readonly id: string }>
 ): { all: Ticket[]; completed: string[]; unfinished: Ticket[] } {
   const { tickets: reviewTickets } = selectReviewTickets(ctx, focuses);
@@ -147,7 +156,7 @@ export function selectTicketReport(ctx: SmithersCtx<RalphOutputs>, ticketId: str
 }
 
 export function selectResearch(ctx: SmithersCtx<RalphOutputs>, ticketId: string) {
-  return ctx.outputMaybe("research", { nodeId: `${ticketId}:research` }) as 
+  return ctx.outputMaybe("research", { nodeId: `${ticketId}:research` }) as
     | { contextFilePath: string; summary: string }
     | undefined;
 }
@@ -246,4 +255,30 @@ export function selectTicketPipelineStage(ctx: SmithersCtx<RalphOutputs>, ticket
   if (ctx.outputMaybe("plan", { nodeId: `${ticketId}:plan` })) return "plan";
   if (ctx.outputMaybe("research", { nodeId: `${ticketId}:research` })) return "research";
   return "not_started";
+}
+
+/**
+ * Check if a ticket has completed all stages required by its tier.
+ * For trivial tickets, completing build-verify means ready to land.
+ * For large tickets, completing report means ready to land.
+ */
+export function isTicketTierComplete(
+  ctx: SmithersCtx<RalphOutputs>,
+  ticketId: string,
+  tier: ComplexityTier,
+): boolean {
+  const finalStage = getTierFinalStage(tier);
+  // Map stage names to their output keys and node IDs
+  const stageToCheck: Record<string, { output: string; nodeId: string }> = {
+    "implement":    { output: "implement",    nodeId: `${ticketId}:implement` },
+    "test":         { output: "test_results", nodeId: `${ticketId}:test` },
+    "build-verify": { output: "build_verify", nodeId: `${ticketId}:build-verify` },
+    "code-review":  { output: "code_review",  nodeId: `${ticketId}:code-review` },
+    "spec-review":  { output: "spec_review",  nodeId: `${ticketId}:spec-review` },
+    "review-fix":   { output: "review_fix",   nodeId: `${ticketId}:review-fix` },
+    "report":       { output: "report",       nodeId: `${ticketId}:report` },
+  };
+  const check = stageToCheck[finalStage];
+  if (!check) return false;
+  return !!ctx.outputMaybe(check.output as any, { nodeId: check.nodeId });
 }

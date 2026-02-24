@@ -20,7 +20,40 @@ Your focus: **new feature work**.
 
 {props.completedTicketIds && props.completedTicketIds.length > 0 ? `\nAlready completed tickets (do NOT regenerate):\n${props.completedTicketIds.map(id => `- ${id}`).join('\n')}` : ''}
 
+{props.existingTickets && props.existingTickets.length > 0 ? `\nExisting in-progress tickets (do NOT duplicate — expand scope if needed):\n${props.existingTickets.map(t => `- ${t.id}: ${t.title} [${t.complexityTier}] (stage: ${t.pipelineStage})`).join('\n')}` : ''}
+
 {props.reviewFindings ? `\nCodebaseReview found issues (already being handled as review tickets — avoid duplicating):\n${props.reviewFindings}` : ''}
+
+## Deduplication Rules
+
+Before creating ANY ticket, check the existing ticket list and completed tickets above. Do NOT create a ticket if:
+- An existing ticket covers the same scope (even partially)
+- An existing completed ticket already addressed this work
+- The work could be added to an existing ticket's scope instead without exploding the scope of the existing ticket
+
+If you see a gap in an existing ticket, note it in that ticket's description rather than creating a new one.
+
+## Complexity Tier Assignment
+
+Every ticket MUST include a `complexityTier` field. Choose based on scope:
+
+- **trivial** (2 stages: implement → build-verify): Single-concern changes that don't alter behavior. Comment cleanup, JSDoc additions, constant extraction, config tweaks, removing dead code. No new tests needed.
+- **small** (3 stages: implement → test → build-verify): Single-file changes with testable behavior. Type exports, adding test cases, simple refactors within one module.
+- **medium** (6 stages: research → plan → implement → test → build-verify → code-review): Multi-file features with cross-cutting concerns. API changes, hook refactors, new integrations. Needs research and planning.
+- **large** (9 stages: full pipeline with spec-review, review-fix, report): Architectural changes, new subsystems, security-sensitive work. Needs full review pipeline.
+
+**Default to the SMALLEST tier that covers the work.** When in doubt between two tiers, choose the lower one. Most refactoring and cleanup work is trivial or small.
+
+## Trivial Work Batching
+
+Group related trivial changes into a single ticket per category. Instead of:
+- "Remove stale comment in foo.ts" (trivial)
+- "Add JSDoc to Bar type" (trivial)
+- "Extract ZERO_HASH constant" (trivial)
+
+Create ONE ticket:
+- "Housekeeping: cleanup query-patterns module" (trivial)
+  Description: Remove stale comments, add missing JSDoc, extract shared constants.
 
 ## Output Requirements
 
@@ -30,10 +63,10 @@ Each ticket must have:
 - `description`: Detailed description
 - `category`: One of: {props.categories.map(c => c.id).join(', ')}
 - `priority`: "critical", "high", "medium", or "low"
-- `ticketType`: always "feature"
+- `complexityTier`: "trivial", "small", "medium", or "large"
 - `acceptanceCriteria`: Array of specific, verifiable strings (example: ["User can create repo", "CLI returns 0 on success"])
-- `testPlan`: How to verify
-- `estimatedComplexity`: "trivial", "small", "medium", or "large"
+- `relevantFiles`: Files likely to be modified (used for merge queue conflict detection)
+- `referenceFiles`: Reference materials to consult
 - `dependencies`: Other ticket IDs this depends on (null if none)
 
 GIT RULES — CRITICAL:
