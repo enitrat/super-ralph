@@ -683,12 +683,31 @@ async function main() {
       ? Math.max(1, Number(parsed.flags["max-concurrency"]) || 6)
       : 6;
 
+    // Read saved prompt for the monitor header
+    const promptSpecPath = join(repoRoot, ".super-ralph", "generated", "PROMPT.md");
+    let savedPrompt = "";
+    if (existsSync(promptSpecPath)) {
+      try { savedPrompt = (await readFile(promptSpecPath, "utf8")).trim(); } catch {}
+    }
+
     console.log(`📁 Repo: ${repoRoot}`);
     console.log(`🔧 Workflow: ${workflowPath}`);
     console.log(`💾 Database: ${dbPath}`);
     console.log(`🆔 Run ID: ${resumeRunId}`);
     console.log(`⚡ Concurrency: ${maxConcurrency}\n`);
-    console.log("🎬 Resuming workflow execution...\n");
+    console.log("🎬 Resuming workflow execution with live monitor...\n");
+
+    // Launch monitor alongside Smithers so it always opens on resume
+    const monitorScript = join(cliDir, "monitor-standalone.ts");
+    const monitorProc = Bun.spawn(
+      ["bun", monitorScript, dbPath, resumeRunId, basename(repoRoot), savedPrompt],
+      {
+        cwd: repoRoot,
+        stdout: "inherit",
+        stderr: "inherit",
+        stdin: "inherit",
+      },
+    );
 
     const exitCode = await launchSmithers({
       mode: "resume",
@@ -698,6 +717,9 @@ async function main() {
       maxConcurrency,
       smithersCliPath,
     });
+
+    // When Smithers finishes, kill the monitor if still running
+    try { monitorProc.kill(); } catch {}
 
     if (exitCode === 0) {
       console.log("\n✅ Super Ralph workflow completed successfully!\n");
