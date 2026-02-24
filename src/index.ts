@@ -33,14 +33,17 @@ import type { Ticket, RalphOutputs } from "./selectors";
 
 import {
   SuperRalph,
+  Job,
   ClarifyingQuestions,
   InterpretConfig,
   Monitor,
   TicketResume,
   TicketScheduler,
   ticketScheduleSchema,
-  ticketAssignmentSchema,
+  scheduledJobSchema,
   computePipelineStage,
+  isJobComplete,
+  JOB_TYPE_TO_OUTPUT_KEY,
   AgenticMergeQueue,
   mergeQueueResultSchema,
   clarifyingQuestionsOutputSchema,
@@ -61,11 +64,12 @@ import {
   pipelineStageIndex,
 } from "./durability";
 import type { SuperRalphProps } from "./components/SuperRalph";
+import type { JobProps } from "./components/Job";
 import type { ClarifyingQuestionsOutput, ClarifyingQuestionsProps } from "./components/ClarifyingQuestions";
 import type { InterpretConfigOutput, InterpretConfigProps } from "./components/InterpretConfig";
 import type { MonitorOutput, MonitorProps } from "./components/Monitor";
 import type { TicketResumeProps } from "./components/TicketResume";
-import type { TicketSchedule, TicketAssignment, TicketSchedulerProps, TicketSchedulerTicket } from "./components/TicketScheduler";
+import type { TicketSchedule, TicketScheduleJob, TicketSchedulerProps, TicketState } from "./components/TicketScheduler";
 import type { AgenticMergeQueueProps, AgenticMergeQueueTicket, MergeQueueResult } from "./components/AgenticMergeQueue";
 import type { CrossRunTicketState } from "./durability";
 import { useSuperRalph } from "./hooks/useSuperRalph";
@@ -96,14 +100,17 @@ export {
 
   // Components
   SuperRalph,
+  Job,
   ClarifyingQuestions,
   InterpretConfig,
   Monitor,
   TicketResume,
   TicketScheduler,
   ticketScheduleSchema,
-  ticketAssignmentSchema,
+  scheduledJobSchema,
   computePipelineStage,
+  isJobComplete,
+  JOB_TYPE_TO_OUTPUT_KEY,
   AgenticMergeQueue,
   mergeQueueResultSchema,
 
@@ -128,6 +135,7 @@ export type {
   Ticket,
   RalphOutputs,
   SuperRalphProps,
+  JobProps,
   SuperRalphContext,
   UseSuperRalphConfig,
   ClarifyingQuestionsOutput,
@@ -138,9 +146,9 @@ export type {
   MonitorProps,
   TicketResumeProps,
   TicketSchedule,
-  TicketAssignment,
+  TicketScheduleJob,
   TicketSchedulerProps,
-  TicketSchedulerTicket,
+  TicketState,
   AgenticMergeQueueProps,
   AgenticMergeQueueTicket,
   MergeQueueResult,
