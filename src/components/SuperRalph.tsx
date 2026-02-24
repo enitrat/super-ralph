@@ -1,5 +1,5 @@
 import { Ralph, Parallel } from "smithers-orchestrator";
-import type { SmithersCtx, AgentLike } from "smithers-orchestrator";
+import type { SmithersCtx, AgentLike, ClaudeCodeAgent, CodexAgent } from "smithers-orchestrator";
 import { selectAllTickets, selectReviewTickets, selectProgressSummary, selectLand, selectTicketReport, selectImplement, isTicketTierComplete } from "../selectors";
 import type { RalphOutputs, Ticket } from "../selectors";
 import React, { type ReactNode } from "react";
@@ -30,7 +30,12 @@ export type SuperRalphProps = {
   maxConcurrency: number;
   taskRetries?: number;
 
-  agents: Record<string, AgentLike>;
+  agents: Record<string, {
+    agent: ClaudeCodeAgent | CodexAgent;
+    description: string;
+    isScheduler?: boolean;
+    isMergeQueue?: boolean;
+  }>;
 
   dbPath?: string;
   progressFile?: string;
@@ -47,17 +52,17 @@ export type SuperRalphProps = {
   children?: ReactNode;
 };
 
-type AgentPool = Record<string, AgentLike>;
+type AgentPool = Record<string, { agent: ClaudeCodeAgent | CodexAgent; description: string; isScheduler?: boolean; isMergeQueue?: boolean }>;
 
 function resolveAgent(pool: AgentPool, agentId: string | undefined): AgentLike {
-  if (agentId && pool[agentId]) return pool[agentId];
-  return Object.values(pool)[0];
+  if (agentId && pool[agentId]) return pool[agentId].agent;
+  return Object.values(pool)[0]?.agent;
 }
 
 function buildAgentPoolDescription(pool: AgentPool): string {
   const entries = Object.entries(pool);
   if (entries.length === 0) return "(no agents registered)";
-  const rows = entries.map(([id, agent]) => `| ${id} | ${(agent as any).model ?? id} |`);
+  const rows = entries.map(([id, { description }]) => `| ${id} | ${description} |`);
   return ["| Agent ID | Description |", "|----------|-------------|", ...rows].join("\n");
 }
 
@@ -88,8 +93,8 @@ export function SuperRalph({
   // Resolve scheduler + merge queue agents from pool flags
   const agentIds = Object.keys(agentPool);
   const defaultAgentId = agentIds[0];
-  const schedulerAgentId = defaultAgentId;
-  const mergeQueueAgentId = defaultAgentId;
+  const schedulerAgentId = Object.entries(agentPool).find(([, e]) => e.isScheduler)?.[0] ?? defaultAgentId;
+  const mergeQueueAgentId = Object.entries(agentPool).find(([, e]) => e.isMergeQueue)?.[0] ?? schedulerAgentId;
   const schedulerAgent = resolveAgent(agentPool, schedulerAgentId);
   const agentPoolContext = buildAgentPoolDescription(agentPool);
   const ciCommands = postLandChecks.length > 0 ? postLandChecks : Object.values(testCmds);

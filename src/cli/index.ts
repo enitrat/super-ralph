@@ -385,11 +385,11 @@ export default smithers((ctx) => (
           outputs={outputs}
           {...((ctx.outputMaybe("interpret-config", outputs.interpret_config) as any) || FALLBACK_CONFIG)}
           agents={{
-            planning: planningAgent,
-            implementation: implementationAgent,
-            testing: testingAgent,
-            reviewing: reviewingAgent,
-            reporting: reportingAgent,
+            planning: { agent: planningAgent, description: "Plan and research next tickets." },
+            implementation: { agent: implementationAgent, description: "Implement with test-driven development and jj workflows." },
+            testing: { agent: testingAgent, description: "Run tests and validate behavior changes." },
+            reviewing: { agent: reviewingAgent, description: "Review for regressions, spec drift, and correctness." },
+            reporting: { agent: reportingAgent, description: "Write concise, accurate ticket status reports." },
           }}
         />
 
