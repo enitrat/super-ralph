@@ -326,7 +326,7 @@ const FALLBACK_CONFIG = ${JSON.stringify(fallbackConfig, null, 2)};
 const CLARIFICATION_SESSION = ${JSON.stringify(clarificationSession)};
 
 function getInterpretedConfig(ctx: any) {
-  const config = ctx.latest("interpret_config", { nodeId: "interpret-config" });
+  const config = ctx.latest("interpret_config", "interpret-config");
   if (!config) {
     throw new Error("InterpretConfig did not produce output — cannot proceed without interpreted config. Check InterpretConfig task logs for errors.");
   }

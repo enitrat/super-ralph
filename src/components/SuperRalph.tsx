@@ -135,7 +135,7 @@ export function SuperRalph({
     if (isJobComplete(ctx, job)) removeJob(db, job.jobId);
   }
 
-  const schedulerOutput = ctx.outputMaybe("ticket_schedule" as any, { nodeId: "ticket-scheduler" }) as TicketSchedule | undefined;
+  const schedulerOutput = ctx.latest("ticket_schedule" as any, "ticket-scheduler") as TicketSchedule | undefined;
   if (schedulerOutput?.jobs) {
     for (const job of schedulerOutput.jobs) {
       const scheduled: ScheduledJob = { jobId: job.jobId, jobType: job.jobType, agentId: job.agentId, ticketId: job.ticketId ?? null, focusId: job.focusId ?? null, createdAtMs: Date.now() };

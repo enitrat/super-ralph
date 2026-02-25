@@ -254,7 +254,7 @@ export function Job({
                   ticketId={ticket.id} ticketTitle={ticket.title} ticketCategory={ticket.category}
                   acceptanceCriteria={ticket.acceptanceCriteria ?? []}
                   specSeverity={latestSpecReview?.severity ?? "none"} codeSeverity={worstCodeSeverity}
-                  allIssuesResolved={(ctx.outputMaybe("review_fix", { nodeId: `${ticket.id}:review-fix` }) as any)?.allIssuesResolved ?? true}
+                  allIssuesResolved={(ctx.latest("review_fix", `${ticket.id}:review-fix`) as any)?.allIssuesResolved ?? true}
                   reviewRounds={1}
                   testResults={latestTest ? [
                     { name: "Go tests", status: latestTest.goTestsPassed ? "PASS" : "FAIL" },
