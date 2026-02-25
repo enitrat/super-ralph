@@ -299,7 +299,7 @@ export async function runMonitorUI(opts: MonitorUIOptions): Promise<{ started: b
 
   // ── Left: Pipeline ──
   const pipeBox = new BoxRenderable(renderer, {
-    id: "pipeBox", border: true, title: " Pipeline ", width: "45%",
+    id: "pipeBox", border: true, title: " Pipeline ", width: "55%",
     flexDirection: "column", borderColor: c.selected,
   });
   content.add(pipeBox);
@@ -311,14 +311,16 @@ export async function runMonitorUI(opts: MonitorUIOptions): Promise<{ started: b
   pipeScroll.add(pipeText);
 
   // ── Right: 3 stacked panels ──
+  // Use flexGrow only (no fixed height) so OpenTUI's flex column distributes
+  // space correctly — mixing integer height with flexGrow siblings collapses them.
   const rightCol = new BoxRenderable(renderer, {
     id: "rightCol", border: false, flexGrow: 1, flexDirection: "column",
   });
   content.add(rightCol);
 
-  // Panel 1: Active Jobs (fixed height)
+  // Panel 1: Active Jobs (1 share)
   const jobsBox = new BoxRenderable(renderer, {
-    id: "jobsBox", border: true, title: " Active Jobs ", height: 9,
+    id: "jobsBox", border: true, title: " Active Jobs ", flexGrow: 1,
     flexDirection: "column", borderColor: c.border,
   });
   rightCol.add(jobsBox);
