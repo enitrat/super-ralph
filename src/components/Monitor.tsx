@@ -1,6 +1,7 @@
 import React from "react";
 import { Task } from "smithers-orchestrator";
 import { z } from "zod";
+import { dirname, join } from "node:path";
 import type { ClarificationSession } from "../cli/clarifications";
 import { runMonitorUI } from "../advanced-monitor-ui";
 
@@ -24,10 +25,11 @@ export type MonitorProps = {
  * Monitor Smithers Component - OpenTUI Dashboard
  *
  * Features:
- * - Real-time task list with status indicators
- * - Navigate tasks with arrow keys
- * - View task details
- * - Overall workflow progress
+ * - Workflow phase awareness (interpreting → discovering → pipeline → merging → done)
+ * - Real-time task list with color-coded stage progress
+ * - Event log tracking phase transitions and key milestones
+ * - Captured stdout/stderr logs panel (prevents TUI corruption)
+ * - Navigate tickets with arrow keys, drill into details
  *
  * The monitor TUI is started in a fire-and-forget manner so it does not
  * block the Smithers engine loop.  Without this, a `<Parallel>` sibling
@@ -42,6 +44,7 @@ export function Monitor({
   runId,
   config,
   prompt,
+  repoRoot,
 }: MonitorProps) {
   // On --resume the CLI spawns a standalone monitor process, so skip the
   // in-workflow monitor to avoid two TUI instances fighting for the terminal.
@@ -52,6 +55,9 @@ export function Monitor({
       </Task>
     );
   }
+
+  // Log file lives next to the Smithers DB
+  const logFile = join(dirname(dbPath), "monitor.log");
 
   return (
     <Task
@@ -68,8 +74,11 @@ export function Monitor({
           runId,
           projectName: config.projectName || "Workflow",
           prompt,
+          logFile,
         }).catch((err) => {
-          process.stderr.write(`[Monitor] TUI crashed: ${err instanceof Error ? err.message : String(err)}\n`);
+          // Use origStdoutWrite if available, otherwise best-effort
+          const msg = `[Monitor] TUI crashed: ${err instanceof Error ? err.message : String(err)}\n`;
+          try { process.stderr.write(msg); } catch { /* console already captured */ }
         });
         return { started: true, status: "running" };
       }}
