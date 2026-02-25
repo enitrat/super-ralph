@@ -28,7 +28,6 @@ export const scheduledJobSchema = z.object({
   jobType: z.enum(JOB_TYPES).describe("Type of job to schedule"),
   agentId: z.string().describe("Agent ID from the pool to assign"),
   ticketId: z.string().nullable().describe("Ticket ID for ticket pipeline jobs, null for global jobs"),
-  focusId: z.string().nullable().describe("Reserved for future use, null for all current job types"),
   reason: z.string().describe("Brief reason for scheduling this job with this agent"),
 });
 
@@ -128,7 +127,7 @@ function getStageStatus(ctx: SmithersCtx<any>, ticketId: string, pipelineStage: 
     case "test": {
       const r = ctx.latest("test_results", `${ticketId}:test`) as any;
       if (!r) return "—";
-      return (r.goTestsPassed && r.rustTestsPassed && r.e2eTestsPassed && r.sqlcGenPassed) ? "passed" : "failed";
+      return r.allPassed ? "passed" : "failed";
     }
     case "build_verify": {
       const r = ctx.latest("build_verify", `${ticketId}:build-verify`) as any;
@@ -222,7 +221,7 @@ Schedule the next pipeline stage for each resumable ticket before scheduling any
 ` : ""}
 ## Job Types You Can Schedule
 
-### Ticket pipeline jobs (require ticketId, focusId=null)
+### Ticket pipeline jobs (require ticketId)
 
 **CRITICAL: Each ticket has a complexity tier that determines its pipeline. Only schedule stages that appear in the ticket's tier.**
 
@@ -246,8 +245,8 @@ Available stage jobs:
 **Schedule the NEXT stage for each ticket based on its current pipeline stage AND its tier.** Look at the "Next Stages" column in the ticket table. Don't schedule stages outside the ticket's tier.
 
 ### Global jobs (ticketId=null)
-- \`discovery\` — Find new tickets to work on (focusId=null, jobId="discovery")
-- \`progress-update\` — Update progress file (focusId=null, jobId="progress-update")
+- \`discovery\` — Find new tickets to work on (jobId="discovery")
+- \`progress-update\` — Update progress file (jobId="progress-update")
 
 ## Scheduling Rules
 

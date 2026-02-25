@@ -718,6 +718,9 @@ async function main() {
       },
     );
 
+    // Tell the in-workflow <Monitor> to skip — the standalone monitor above handles TUI
+    process.env.SUPER_RALPH_SKIP_MONITOR = "1";
+
     const exitCode = await launchSmithers({
       mode: "resume",
       workflowPath,

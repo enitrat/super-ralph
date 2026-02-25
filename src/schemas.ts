@@ -1,9 +1,44 @@
 import { z } from "zod";
-import { clarifyingQuestionsOutputSchema, generateQuestionsOutputSchema } from "./components/ClarifyingQuestions";
 import { interpretConfigOutputSchema } from "./components/InterpretConfig";
 import { monitorOutputSchema } from "./components/Monitor";
 import { ticketScheduleSchema } from "./components/TicketScheduler";
 import { mergeQueueResultSchema } from "./components/AgenticMergeQueue";
+
+// Extracted from ClarifyingQuestions.tsx (moved to _deprecated)
+export const generateQuestionsOutputSchema = z.object({
+  questions: z.array(z.object({
+    question: z.string(),
+    choices: z.array(z.object({
+      label: z.string(),
+      description: z.string(),
+      value: z.string(),
+    })),
+  })),
+});
+
+export const clarifyingQuestionsOutputSchema = z.object({
+  questions: z.array(z.object({
+    question: z.string(),
+    choices: z.array(z.object({
+      label: z.string(),
+      description: z.string(),
+      value: z.string(),
+    })),
+  })),
+  answers: z.array(z.object({
+    question: z.string(),
+    answer: z.string(),
+    isCustom: z.boolean(),
+  })),
+  session: z.object({
+    answers: z.array(z.object({
+      question: z.string(),
+      answer: z.string(),
+      isCustom: z.boolean(),
+    })),
+    summary: z.string(),
+  }),
+});
 
 /**
  * Complexity tiers control which pipeline stages a ticket must complete.
@@ -94,10 +129,12 @@ export const ralphOutputSchemas = {
   }),
 
   test_results: z.object({
-    goTestsPassed: z.boolean(),
-    rustTestsPassed: z.boolean(),
-    e2eTestsPassed: z.boolean(),
-    sqlcGenPassed: z.boolean(),
+    allPassed: z.boolean().describe("True if every suite passed"),
+    suiteResults: z.array(z.object({
+      name: z.string().describe("Suite name (e.g. 'unit', 'integration', 'e2e')"),
+      passed: z.boolean(),
+      summary: z.string().nullable().describe("Details on failures, if any"),
+    })).nullable().describe("Per-suite breakdown, null if not available"),
     failingSummary: z.string().nullable(),
   }),
 

@@ -73,17 +73,6 @@ declare module "*/prompts/Implement.mdx" {
   export default Component;
 }
 
-declare module "*/prompts/Land.mdx" {
-  interface LandPromptProps {
-    ciCommands?: any;
-    ticketCategory: any;
-    ticketId: any;
-    ticketTitle: any;
-  }
-  const Component: import("react").FC<LandPromptProps>;
-  export default Component;
-}
-
 declare module "*/prompts/Plan.mdx" {
   interface PlanPromptProps {
     acceptanceCriteria?: any;

@@ -43,6 +43,16 @@ export function Monitor({
   config,
   prompt,
 }: MonitorProps) {
+  // On --resume the CLI spawns a standalone monitor process, so skip the
+  // in-workflow monitor to avoid two TUI instances fighting for the terminal.
+  if (process.env.SUPER_RALPH_SKIP_MONITOR === "1") {
+    return (
+      <Task id="monitor" output={monitorOutputSchema} continueOnFail={true}>
+        {async () => ({ started: false, status: "skipped-standalone-active" })}
+      </Task>
+    );
+  }
+
   return (
     <Task
       id="monitor"
@@ -58,7 +68,9 @@ export function Monitor({
           runId,
           projectName: config.projectName || "Workflow",
           prompt,
-        }).catch(() => {});
+        }).catch((err) => {
+          process.stderr.write(`[Monitor] TUI crashed: ${err instanceof Error ? err.message : String(err)}\n`);
+        });
         return { started: true, status: "running" };
       }}
     </Task>

@@ -28,7 +28,6 @@ export type JobProps = {
 
   // Lookups
   ticketMap: Map<string, Ticket>;
-  focusMap: Map<string, { id: string; name: string }>;
 
   // Project config
   projectName: string;
@@ -44,12 +43,9 @@ export type JobProps = {
   mainBranch: string;
   emojiPrefixes: string;
   testSuites: Array<{ name: string; command: string; description: string }>;
-  focusTestSuites: Record<string, { suites: string[]; setupHints: string[]; testDirs: string[] }>;
-  focusDirs: Record<string, string[]>;
   completedTicketIds: string[];
   unfinishedTickets: Ticket[];
   progressSummary: string | null;
-  reviewFindings: string | null;
   focuses: ReadonlyArray<{ readonly id: string; readonly name: string }>;
 };
 
@@ -71,11 +67,11 @@ function wrapWorktree(id: string, child: React.ReactElement) {
 
 export function Job({
   job, ctx, outputs, agent, retries,
-  ticketMap, focusMap,
+  ticketMap,
   projectName, specsPath, referenceFiles, buildCmds, testCmds,
   codeStyle, reviewChecklist, progressFile, findingsFile,
-  prefix, mainBranch, emojiPrefixes, testSuites, focusTestSuites, focusDirs,
-  completedTicketIds, unfinishedTickets, progressSummary, reviewFindings, focuses,
+  prefix, mainBranch, emojiPrefixes, testSuites,
+  completedTicketIds, unfinishedTickets, progressSummary, focuses,
 }: JobProps) {
   switch (job.jobType) {
     // --- Global jobs ---
@@ -91,7 +87,7 @@ export function Job({
               complexityTier: t.complexityTier,
               pipelineStage: computePipelineStage(ctx, t.id),
             }))}
-            previousProgress={progressSummary} reviewFindings={reviewFindings}
+            previousProgress={progressSummary}
           />
         </Task>
       );
@@ -215,7 +211,7 @@ export function Job({
                 <SpecReviewPrompt
                   ticketId={ticket.id} ticketTitle={ticket.title} ticketCategory={ticket.category}
                   filesCreated={latestImpl?.filesCreated ?? null} filesModified={latestImpl?.filesModified ?? null}
-                  testResults={[{ name: "Tests", status: latestTest?.goTestsPassed ? "PASS" : "FAIL" }]}
+                  testResults={[{ name: "Tests", status: latestTest?.allPassed ? "PASS" : "FAIL" }]}
                   failingSummary={latestTest?.failingSummary ?? null}
                   specChecks={[
                     { name: "Code Style", items: [codeStyle] },
@@ -256,12 +252,9 @@ export function Job({
                   specSeverity={latestSpecReview?.severity ?? "none"} codeSeverity={worstCodeSeverity}
                   allIssuesResolved={(ctx.latest("review_fix", `${ticket.id}:review-fix`) as any)?.allIssuesResolved ?? true}
                   reviewRounds={1}
-                  testResults={latestTest ? [
-                    { name: "Go tests", status: latestTest.goTestsPassed ? "PASS" : "FAIL" },
-                    { name: "Rust tests", status: latestTest.rustTestsPassed ? "PASS" : "FAIL" },
-                    { name: "E2E tests", status: latestTest.e2eTestsPassed ? "PASS" : "FAIL" },
-                    { name: "sqlc gen", status: latestTest.sqlcGenPassed ? "PASS" : "FAIL" },
-                  ] : []}
+                  testResults={latestTest?.suiteResults
+                    ? latestTest.suiteResults.map(r => ({ name: r.name, status: r.passed ? "PASS" : "FAIL" }))
+                    : []}
                 />
               </Task>
             );

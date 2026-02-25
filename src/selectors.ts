@@ -72,11 +72,6 @@ function normalizeTicket(raw: unknown): Ticket | null {
   };
 }
 
-// Type helper for output inference
-type OutputType<K extends SchemaKey> = ReturnType<SmithersCtx<RalphOutputs>["outputMaybe"]> extends infer R
-  ? R
-  : unknown;
-
 export function selectDiscoverTickets(ctx: SmithersCtx<RalphOutputs>): Ticket[] {
   const allRows = ctx.outputs("discover")
     .filter((row: any) => row?.nodeId === "discovery" && Array.isArray(row?.tickets))
@@ -140,7 +135,7 @@ export function selectImplement(ctx: SmithersCtx<RalphOutputs>, ticketId: string
 
 export function selectTestResults(ctx: SmithersCtx<RalphOutputs>, ticketId: string) {
   return ctx.latest("test_results", `${ticketId}:test`) as
-    | { goTestsPassed: boolean; rustTestsPassed: boolean; e2eTestsPassed: boolean; sqlcGenPassed: boolean; failingSummary: string | null }
+    | { allPassed: boolean; suiteResults: Array<{ name: string; passed: boolean; summary: string | null }> | null; failingSummary: string | null }
     | undefined;
 }
 

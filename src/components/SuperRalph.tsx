@@ -1,10 +1,9 @@
 import { Ralph, Parallel } from "smithers-orchestrator";
 import type { SmithersCtx, AgentLike, ClaudeCodeAgent, CodexAgent } from "smithers-orchestrator";
-import { selectAllTickets, selectProgressSummary, selectLand, selectTicketReport, selectImplement, isTicketTierComplete } from "../selectors";
+import { selectAllTickets, selectProgressSummary, selectLand, selectImplement, isTicketTierComplete } from "../selectors";
 import type { RalphOutputs, Ticket } from "../selectors";
-import React, { type ReactNode } from "react";
+import React from "react";
 import { Database } from "bun:sqlite";
-import { type MergeQueueOrderingStrategy } from "../mergeQueue/coordinator";
 import { computePipelineStage, isJobComplete, type TicketSchedule, type TicketState } from "./TicketScheduler";
 import { TicketScheduler } from "./TicketScheduler";
 import { AgenticMergeQueue } from "./AgenticMergeQueue";
@@ -19,7 +18,6 @@ export type SuperRalphProps = {
   focuses: ReadonlyArray<{ readonly id: string; readonly name: string }>;
   outputs: RalphOutputs;
 
-  projectId: string;
   projectName: string;
   specsPath: string;
   referenceFiles: string[];
@@ -43,15 +41,10 @@ export type SuperRalphProps = {
   findingsFile?: string;
   commitConfig?: { prefix?: string; mainBranch?: string; emojiPrefixes?: string };
   testSuites?: Array<{ name: string; command: string; description: string }>;
-  focusTestSuites?: Record<string, { suites: string[]; setupHints: string[]; testDirs: string[] }>;
-  focusDirs?: Record<string, string[]>;
   preLandChecks?: string[];
   postLandChecks?: string[];
-  mergeQueueOrdering?: MergeQueueOrderingStrategy;
   maxSpeculativeDepth?: number;
-  mergeQueueId?: string;
   repoRoot?: string;
-  children?: ReactNode;
 };
 
 type AgentPool = Record<string, { agent: ClaudeCodeAgent | CodexAgent; description: string; isScheduler?: boolean; isMergeQueue?: boolean }>;
@@ -72,7 +65,7 @@ function buildAgentPoolDescription(pool: AgentPool): string {
 
 export function SuperRalph({
   ctx, focuses, outputs,
-  projectId, projectName, specsPath, referenceFiles, buildCmds, testCmds,
+  projectName, specsPath, referenceFiles, buildCmds, testCmds,
   codeStyle, reviewChecklist, maxConcurrency, taskRetries = 3,
   agents: agentPool,
   dbPath = "./scheduled-tasks.db",
@@ -80,8 +73,6 @@ export function SuperRalph({
   findingsFile = "docs/test-suite-findings.md",
   commitConfig = {},
   testSuites = [],
-  focusTestSuites = {},
-  focusDirs = {},
   preLandChecks = [],
   postLandChecks = [],
   maxSpeculativeDepth = 3,
@@ -103,7 +94,6 @@ export function SuperRalph({
 
   // Lookups
   const ticketMap = new Map<string, Ticket>(unfinishedTickets.map(t => [t.id, t]));
-  const focusMap = new Map(focuses.map(f => [f.id, f]));
 
   // Ticket pipeline states (for scheduler context)
   const ticketStates: TicketState[] = unfinishedTickets.map(ticket => ({
@@ -141,7 +131,7 @@ export function SuperRalph({
   const schedulerOutput = ctx.latest("ticket_schedule" as any, "ticket-scheduler") as TicketSchedule | undefined;
   if (schedulerOutput?.jobs) {
     for (const job of schedulerOutput.jobs) {
-      const scheduled: ScheduledJob = { jobId: job.jobId, jobType: job.jobType, agentId: job.agentId, ticketId: job.ticketId ?? null, focusId: job.focusId ?? null, createdAtMs: Date.now() };
+      const scheduled: ScheduledJob = { jobId: job.jobId, jobType: job.jobType, agentId: job.agentId, ticketId: job.ticketId ?? null, createdAtMs: Date.now() };
       if (!isJobComplete(ctx, scheduled)) {
         insertJob(db, scheduled);
       }
@@ -158,11 +148,11 @@ export function SuperRalph({
   // Shared props for <Job /> components
   const jobProps = {
     ctx, outputs, retries: taskRetries,
-    ticketMap, focusMap,
+    ticketMap,
     projectName, specsPath, referenceFiles, buildCmds, testCmds,
     codeStyle, reviewChecklist, progressFile, findingsFile,
-    prefix, mainBranch, emojiPrefixes, testSuites, focusTestSuites, focusDirs,
-    completedTicketIds, unfinishedTickets, progressSummary, reviewFindings: null, focuses,
+    prefix, mainBranch, emojiPrefixes, testSuites,
+    completedTicketIds, unfinishedTickets, progressSummary, focuses,
   };
 
   return (

@@ -44,10 +44,8 @@ import type { ComplexityTier } from "./schemas";
 import {
   SuperRalph,
   Job,
-  ClarifyingQuestions,
   InterpretConfig,
   Monitor,
-  TicketResume,
   TicketScheduler,
   ticketScheduleSchema,
   scheduledJobSchema,
@@ -56,10 +54,14 @@ import {
   JOB_TYPE_TO_OUTPUT_KEY,
   AgenticMergeQueue,
   mergeQueueResultSchema,
-  clarifyingQuestionsOutputSchema,
   interpretConfigOutputSchema,
   monitorOutputSchema,
 } from "./components";
+
+import {
+  clarifyingQuestionsOutputSchema,
+  generateQuestionsOutputSchema,
+} from "./schemas";
 
 import {
   AgentRegistry,
@@ -75,10 +77,8 @@ import {
 } from "./durability";
 import type { SuperRalphProps } from "./components/SuperRalph";
 import type { JobProps } from "./components/Job";
-import type { ClarifyingQuestionsOutput, ClarifyingQuestionsProps } from "./components/ClarifyingQuestions";
 import type { InterpretConfigOutput, InterpretConfigProps } from "./components/InterpretConfig";
 import type { MonitorOutput, MonitorProps } from "./components/Monitor";
-import type { TicketResumeProps } from "./components/TicketResume";
 import type { TicketSchedule, TicketScheduleJob, TicketSchedulerProps, TicketState } from "./components/TicketScheduler";
 import type { AgenticMergeQueueProps, AgenticMergeQueueTicket, MergeQueueResult } from "./components/AgenticMergeQueue";
 import type { CrossRunTicketState } from "./durability";
@@ -117,10 +117,8 @@ export {
   // Components
   SuperRalph,
   Job,
-  ClarifyingQuestions,
   InterpretConfig,
   Monitor,
-  TicketResume,
   TicketScheduler,
   ticketScheduleSchema,
   scheduledJobSchema,
@@ -143,6 +141,7 @@ export {
   // Schemas
   ralphOutputSchemas,
   clarifyingQuestionsOutputSchema,
+  generateQuestionsOutputSchema,
   interpretConfigOutputSchema,
   monitorOutputSchema,
 };
@@ -155,13 +154,10 @@ export type {
   JobProps,
   SuperRalphContext,
   UseSuperRalphConfig,
-  ClarifyingQuestionsOutput,
-  ClarifyingQuestionsProps,
   InterpretConfigOutput,
   InterpretConfigProps,
   MonitorOutput,
   MonitorProps,
-  TicketResumeProps,
   TicketSchedule,
   TicketScheduleJob,
   TicketSchedulerProps,

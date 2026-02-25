@@ -335,62 +335,6 @@ export function getClarificationQuestions(): ClarificationQuestion[] {
 }
 
 /**
- * Build a prompt that AI agents can use to gather workflow clarifications.
- * This provides a structured way for agents to ask the same questions.
- */
-export function buildAgentClarificationPrompt(): string {
-  const questions = getClarificationQuestions();
-
-  const questionsBlock = questions
-    .map((q, i) => {
-      const choicesBlock = q.choices
-        .map((c, j) => `    ${j + 1}. ${c.label}: ${c.description}`)
-        .join("\n");
-      return `${i + 1}. ${q.question}\n${choicesBlock}\n    5. Custom: (User provides their own answer)`;
-    })
-    .join("\n\n");
-
-  return `# Super Ralph Workflow Clarification Questions
-
-You are helping configure a Super Ralph workflow. Ask the user the following questions to gather their preferences.
-
-For each question:
-- Present all 5 options clearly with their descriptions
-- Accept either a number (1-5) to select a preset, or custom text if they choose option 5
-- Record their choice
-
-## Questions to Ask:
-
-${questionsBlock}
-
-## Instructions:
-1. Ask each question sequentially (minimum ${questions.length} questions)
-2. Present all choices with detailed descriptions
-3. Accept the user's choice and record it
-4. After all questions are answered, provide a summary
-5. Use the answers to inform the workflow configuration with specific settings:
-   - Adjust maxConcurrency based on velocity preference (rapid=12-16, balanced=6-8, deliberate=2-4, maximum=24-32)
-   - Set taskRetries based on failure handling (aggressive=5, standard=3, fail-fast=1, continue=3)
-   - Configure preLandChecks based on validation preference (full=all, essential=typecheck+critical, typecheck=types only, skip=none)
-   - Configure postLandChecks based on post-landing preference (full-tests=all, integration=e2e+integration, smoke=smoke only, none=skip)
-   - Adjust reviewChecklist based on review rigor (strict=comprehensive, standard=focused, lightweight=minimal, auto=skip)
-   - Set maxSpeculativeDepth based on speculation preference (conservative=1-2, moderate=3-4, aggressive=5+, disabled=0)
-
-## Output Format:
-After gathering all answers, provide them in this JSON structure:
-{
-  "answers": [
-    {
-      "question": "What is the primary goal of this workflow?",
-      "answer": "Feature Development: Building new features with comprehensive testing and review cycles",
-      "isCustom": false
-    }
-  ],
-  "summary": "1. What is the primary goal of this workflow?\\n   → Feature Development: Building new features with comprehensive testing and review cycles\\n\\n2. What level of test coverage is expected?\\n   → Standard Coverage: Test all modified functions and their direct dependencies..."
-}`;
-}
-
-/**
  * Format a clarification session as a summary string for use in prompts.
  */
 export function formatClarificationSummary(session: ClarificationSession): string {
