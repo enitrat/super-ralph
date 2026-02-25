@@ -151,9 +151,40 @@ export function selectSpecReview(ctx: SmithersCtx<RalphOutputs>, ticketId: strin
 }
 
 export function selectLand(ctx: SmithersCtx<RalphOutputs>, ticketId: string) {
-  return ctx.latest("land", `${ticketId}:land`) as
+  // Check direct per-ticket land rows first
+  const directLand = ctx.latest("land", `${ticketId}:land`) as
     | { merged: boolean; mergeCommit: string | null; ciPassed: boolean; summary: string; evicted?: boolean; evictionReason?: string | null; evictionDetails?: string | null; attemptedLog?: string | null; attemptedDiffSummary?: string | null; landedOnMainSinceBranch?: string | null }
     | undefined;
+  if (directLand) return directLand;
+
+  // Scan merge_queue_result rows for this ticket
+  const mqResults = ctx.outputs("merge_queue_result");
+  for (const row of mqResults) {
+    const result = row as any;
+    const landed = result?.ticketsLanded?.find((t: any) => t.ticketId === ticketId);
+    if (landed) {
+      return {
+        merged: true as const,
+        mergeCommit: (landed.mergeCommit as string) ?? null,
+        ciPassed: true,
+        summary: (landed.summary as string) ?? "",
+      };
+    }
+    const evicted = result?.ticketsEvicted?.find((t: any) => t.ticketId === ticketId);
+    if (evicted) {
+      return {
+        merged: false as const,
+        mergeCommit: null,
+        ciPassed: false,
+        summary: (evicted.reason as string) ?? "",
+        evicted: true,
+        evictionReason: (evicted.reason as string) ?? null,
+        evictionDetails: (evicted.details as string) ?? null,
+      };
+    }
+  }
+
+  return undefined;
 }
 
 export function selectCodeReviews(ctx: SmithersCtx<RalphOutputs>, ticketId: string) {
@@ -208,8 +239,8 @@ export function selectMonitor(ctx: SmithersCtx<RalphOutputs>) {
 }
 
 export function selectTicketPipelineStage(ctx: SmithersCtx<RalphOutputs>, ticketId: string): string {
-  const land = ctx.latest?.("land", `${ticketId}:land`);
-  if ((land as any)?.merged) return "landed";
+  const land = selectLand(ctx, ticketId);
+  if (land?.merged) return "landed";
   if (ctx.outputMaybe("report", { nodeId: `${ticketId}:report` })) return "report";
   if (ctx.outputMaybe("review_fix", { nodeId: `${ticketId}:review-fix` })) return "review_fix";
   if (ctx.outputMaybe("code_review", { nodeId: `${ticketId}:code-review` })) return "code_review";

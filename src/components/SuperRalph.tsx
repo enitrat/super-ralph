@@ -180,7 +180,7 @@ export function SuperRalph({
           agent={resolveAgent(agentPool, mergeQueueAgentId)}
           postLandChecks={ciCommands} preLandChecks={preLandChecks}
           repoRoot={process.cwd()} mainBranch={mainBranch}
-          maxSpeculativeDepth={maxSpeculativeDepth} output={outputs.land}
+          maxSpeculativeDepth={maxSpeculativeDepth} output={outputs.merge_queue_result}
         />
       </Parallel>
     </Ralph>
