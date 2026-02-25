@@ -7,8 +7,7 @@
   "type": "module",
   "module": "src/index.ts",
   "bin": {
-    "ralphinho": "src/cli/ralphinho.ts",
-    "super-ralph": "src/cli/index.ts"
+    "ralphinho": "src/cli/ralphinho.ts"
   },
   "exports": {
     ".": "./src/index.ts",
@@ -46,8 +45,7 @@
   "scripts": {
     "gen:mdx-types": "bun scripts/gen-mdx-types.ts",
     "typecheck": "bun scripts/gen-mdx-types.ts && tsc --noEmit",
-    "cli": "bun run src/cli/index.ts",
-    "ralphinho": "bun run src/cli/ralphinho.ts"
+    "cli": "bun run src/cli/ralphinho.ts"
   },
   "peerDependencies": {
     "smithers-orchestrator": "^0.9.0"
