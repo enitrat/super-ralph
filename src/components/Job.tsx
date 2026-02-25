@@ -202,6 +202,10 @@ export function Job({
                   ticketId={ticket.id} ticketTitle={ticket.title} ticketCategory={ticket.category}
                   filesCreated={latestImpl?.filesCreated ?? null} filesModified={latestImpl?.filesModified ?? null}
                   whatWasDone={latestImpl?.whatWasDone ?? null}
+                  projectName={projectName}
+                  buildSteps={Object.entries(buildCmds).map(([name, command]) => ({
+                    name: `${name} build`, command, description: `Run ${name} build`,
+                  }))}
                 />
               </Task>
             );
