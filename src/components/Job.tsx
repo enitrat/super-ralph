@@ -226,7 +226,7 @@ export function Job({
                 <CodeReviewPrompt
                   ticketId={ticket.id} ticketTitle={ticket.title} ticketCategory={ticket.category}
                   filesCreated={latestImpl?.filesCreated ?? null} filesModified={latestImpl?.filesModified ?? null}
-                  reviewChecklist={reviewChecklist}
+                  qualityChecks={[{ name: "Review Checklist", items: reviewChecklist }]}
                 />
               </Task>
             );
