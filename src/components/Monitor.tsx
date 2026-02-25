@@ -28,6 +28,14 @@ export type MonitorProps = {
  * - Navigate tasks with arrow keys
  * - View task details
  * - Overall workflow progress
+ *
+ * The monitor TUI is started in a fire-and-forget manner so it does not
+ * block the Smithers engine loop.  Without this, a `<Parallel>` sibling
+ * like `<SuperRalph>` can never advance its Ralph iteration because the
+ * engine's `Promise.all` waits for every runnable task — including this
+ * never-finishing polling loop — before re-rendering.
+ *
+ * See: https://github.com/evmts/super-ralph/issues/6
  */
 export function Monitor({
   dbPath,
@@ -42,12 +50,16 @@ export function Monitor({
       continueOnFail={true}
     >
       {async () => {
-        return runMonitorUI({
+        // Start the TUI without awaiting it — the polling loop runs in
+        // the background while the Task completes immediately, unblocking
+        // the engine so sibling components can iterate.
+        runMonitorUI({
           dbPath,
           runId,
           projectName: config.projectName || "Workflow",
           prompt,
-        });
+        }).catch(() => {});
+        return { started: true, status: "running" };
       }}
     </Task>
   );
