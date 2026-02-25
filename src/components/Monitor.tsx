@@ -2,7 +2,7 @@ import React from "react";
 import { Task } from "smithers-orchestrator";
 import { z } from "zod";
 import type { ClarificationSession } from "../cli/clarifications";
-import { runMonitorUI } from "../monitor-ui";
+import { runMonitorUI } from "../advanced-monitor-ui";
 
 export const monitorOutputSchema = z.object({
   started: z.boolean(),

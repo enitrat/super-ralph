@@ -5,7 +5,7 @@
  * Usage: bun src/cli/monitor-standalone.ts <dbPath> <runId> [projectName] [prompt]
  */
 
-import { runMonitorUI } from "../monitor-ui";
+import { runMonitorUI } from "../advanced-monitor-ui";
 
 const [dbPath, runId, projectName, prompt] = process.argv.slice(2);
 
