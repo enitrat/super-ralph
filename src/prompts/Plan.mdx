@@ -15,29 +15,40 @@ Read the context file first: {props.contextFilePath}
 
 ## Your Task
 
-Create a detailed implementation plan with TDD approach.
+Create a detailed implementation plan. First, assess whether this work changes observable behavior or is mechanical/housekeeping.
 
-1. **Break down the work** into small, atomic steps (one function, one route, one test per step)
-2. **Order the steps** — tests FIRST, then implementation
+1. **Assess the work type** — does this add features, fix bugs, change APIs? Or is it cleanup, refactoring, dead code removal?
+2. **Break down the work** into small, atomic steps
 3. **Identify files** to create and modify
-4. **Identify tests** — both unit tests and integration tests
-5. **Note risks** or potential issues
-6. **Write the plan** to {props.planFilePath}
+4. **If TDD applies**: identify tests to write (unit + integration), order tests BEFORE implementation
+5. **If TDD does not apply**: list the changes and the verification steps (typecheck, existing tests)
+6. **Note risks** or potential issues
+7. **Write the plan** to {props.planFilePath}
 
-## TDD Plan Format
+## Does TDD Apply?
 
-The plan file MUST follow TDD ordering:
+**TDD applies** when the work changes observable behavior:
+- New features, public API surface, or code paths
+- Bug fixes (test reproduces the bug first)
+- Changed inputs, outputs, or error handling
+
+**TDD does not apply** when the work is mechanical:
+- Dead code removal, unused exports, deprecated aliases
+- Renaming, moving, reorganizing without behavior change
+- Mechanical refactoring (extract function, change visibility)
+- Work where the compiler already enforces correctness
 
 {props.tddPatterns && props.tddPatterns.length > 0
   ? props.tddPatterns.map(p => `${p}`).join('\n\n')
-  : 'Write tests BEFORE implementation, then make them pass.'}
+  : ''}
 
 ## Plan File Contents
 
 - Overview of the approach
-- TDD step order (tests before implementation)
+- **Whether TDD applies**, with justification
+- Step-by-step changes (TDD: tests before implementation; non-TDD: changes then verification)
 - Files to create/modify (with specific function signatures)
-- Tests to write (unit + integration)
+- Tests to write (if TDD) or existing tests that cover the change (if non-TDD)
 - Risks and mitigations
 - How to verify against acceptance criteria
 

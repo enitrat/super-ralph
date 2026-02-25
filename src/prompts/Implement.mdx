@@ -18,31 +18,56 @@ Implementation steps from plan:
 
 {props.failingTests ? `\nFIX THESE FAILING TESTS FIRST:\n${props.failingTests}` : ''}
 
-## TDD IS MANDATORY — Follow This Order Exactly
+## Implementation Approach
 
-### Step 1: Write Failing Tests FIRST
+Assess whether TDD applies to this ticket. **Not all work needs new tests — don't write tests that test nothing meaningful.**
+
+**TDD applies** when the ticket changes observable behavior:
+- New features, public API surface, or code paths
+- Bug fixes (test reproduces the bug first)
+- Changed inputs, outputs, or error handling
+
+**TDD does not apply** when the work is mechanical:
+- Dead code removal, unused exports, deprecated aliases
+- Renaming, moving, reorganizing without behavior change
+- Mechanical refactoring (extract function, change visibility)
+- Work where the compiler already enforces correctness
+
+### When TDD Applies — Red → Green → Refactor
+
+**Step 1: Write Failing Tests FIRST**
 
 {props.testWritingGuidance && props.testWritingGuidance.length > 0
   ? props.testWritingGuidance.map(g => `${g}`).join('\n\n')
   : '- Write tests for happy paths AND error paths\n- Run test command to confirm tests FAIL (red phase)'}
 
-### Step 2: Write Minimal Implementation (Green Phase)
+**Step 2: Write Minimal Implementation (Green Phase)**
 
 - Write the SMALLEST amount of code to make failing tests pass
 {props.implementationGuidance && props.implementationGuidance.length > 0
   ? props.implementationGuidance.map(g => `- ${g}`).join('\n')
   : '- Follow project architectural patterns'}
 
-### Step 3: Refactor (Refactor Phase)
+**Step 3: Refactor**
 
 - Clean up while keeping tests green
-- Extract shared logic
-- Improve naming
+- Extract shared logic, improve naming
 {props.formatterCommands && props.formatterCommands.length > 0
   ? `- Run formatters: ${props.formatterCommands.join(', ')}`
   : '- Run formatters'}
 
-### Step 4: Verify
+### When TDD Does Not Apply
+
+1. Make the changes described in the plan
+2. Run typecheck — no new type errors
+{props.verifyCommands && props.verifyCommands.length > 0
+  ? props.verifyCommands.map(c => `3. Run \`${c}\` — existing tests must still pass`).join('\n')
+  : '3. Run existing tests — all suites must still pass'}
+{props.formatterCommands && props.formatterCommands.length > 0
+  ? `4. Run formatters: ${props.formatterCommands.join(', ')}`
+  : '4. Run formatters'}
+
+### Verify (both paths)
 
 {props.verifyCommands && props.verifyCommands.length > 0
   ? props.verifyCommands.map(c => `- Run \`${c}\``).join('\n')
