@@ -28,7 +28,7 @@ Two workflow modes exist:
 | Mode | Input | Scheduling | See |
 |------|-------|-----------|-----|
 | **Super-Ralph** | Free-form prompt | AI-driven (dynamic discovery + scheduler) | [SUPER_RALPH.md](SUPER_RALPH.md) |
-| **Scheduled Work** | RFC/PRD document | Deterministic DAG (pre-planned) | [SCHEDULED_WORK.md](SCHEDULED_WORK.md) |
+| **Scheduled Work** | RFC/PRD document | Deterministic DAG (pre-planned) | [RALPHINHO.md](RALPHINHO.md) |
 
 Both modes share the same core infrastructure documented here: the Smithers engine, agent system, jj VCS, worktree isolation, complexity tiers, quality pipeline stages, and merge queue.
 
