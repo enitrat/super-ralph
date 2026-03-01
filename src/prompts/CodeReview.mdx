@@ -5,8 +5,8 @@ Category: {props.unitCategory}
 
 {props.whatWasDone ? `\nWhat was implemented: ${props.whatWasDone}` : ''}
 
-You are reviewing this ticket's implementation for **code quality only**.
-Spec compliance is reviewed separately — focus here on quality, correctness patterns, and maintainability.
+You are reviewing this ticket's implementation for **code quality, correctness, and simplicity**.
+Spec compliance is reviewed separately — focus here on whether the code is clean, efficient, and leaves the codebase better than it found it.
 
 ## Files to Review
 
@@ -15,16 +15,74 @@ Spec compliance is reviewed separately — focus here on quality, correctness pa
 
 ## Review Checklist
 
-READ every file modified/created. Check:
+READ every file modified/created. Check each section below.
 
 {props.qualityChecks && props.qualityChecks.length > 0
   ? props.qualityChecks.map((check, i) => `### ${i + 1}. ${check.name}\n${check.items.map(item => `- ${item}`).join('\n')}`).join('\n\n')
-  : '### Code quality\n- Check error handling\n- Check security\n- Check code style\n- Check test coverage\n- Check performance\n- Check architecture'}
+  : ''}
 
-Severity levels:
-- "critical" — Security issue, data corruption risk, or missing error handling
-- "major" — Missing tests, architectural problems, or significant quality issues
-- "minor" — Style issues, minor refactoring opportunities
+### Test Quality Review
+
+Check that tests follow TDD principles and test real behavior:
+
+**Flag these anti-patterns (severity: major):**
+- Tests that verify types, type exports, or type narrowing — the compiler handles this, testing it is pure waste
+- Tests that check module export names, re-exports, or barrel file structure — this is testing package organization, not behavior
+- Tests that assert on internal state shape rather than observable behavior
+- Tests that are entirely mock-driven with no real code exercised — if the test only proves the mock works, delete it
+- Tests with vague names (`it works`, `handles correctly`, `should be valid`) — a test name must describe the expected behavior
+- Tests that duplicate what the type system already enforces
+- Tests for naming conventions, file structure, or code organization
+
+**Good tests look like:**
+- Test observable behavior and public API contracts
+- Clear names describing what should happen (e.g., `retries failed operations 3 times`)
+- Exercise real code paths — mocks only for true external boundaries (network, filesystem, third-party services)
+- Each test covers one behavior, fails for one reason
+
+### Code Reuse Review
+
+For each change:
+
+1. **Search for existing utilities and helpers** that could replace newly written code. Use Grep to find similar patterns elsewhere in the codebase — common locations are utility directories, shared modules, and files adjacent to the changed ones.
+2. **Flag any new function that duplicates existing functionality.** Suggest the existing function to use instead.
+3. **Flag any inline logic that could use an existing utility** — hand-rolled string manipulation, manual path handling, custom environment checks, ad-hoc type guards, and similar patterns are common candidates.
+
+### Code Quality Review
+
+Review the same changes for hacky patterns:
+
+1. **Redundant state**: state that duplicates existing state, cached values that could be derived, observers/effects that could be direct calls
+2. **Parameter sprawl**: adding new parameters to a function instead of generalizing or restructuring existing ones
+3. **Copy-paste with slight variation**: near-duplicate code blocks that should be unified with a shared abstraction
+4. **Leaky abstractions**: exposing internal details that should be encapsulated, or breaking existing abstraction boundaries
+5. **Stringly-typed code**: using raw strings where constants, enums (string unions), or branded types already exist in the codebase
+
+### Efficiency Review
+
+Review the same changes for efficiency:
+
+1. **Unnecessary work**: redundant computations, repeated file reads, duplicate network/API calls, N+1 patterns
+2. **Missed concurrency**: independent operations run sequentially when they could run in parallel
+3. **Hot-path bloat**: new blocking work added to startup or per-request/per-render hot paths
+4. **Unnecessary existence checks**: pre-checking file/resource existence before operating (TOCTOU anti-pattern) — operate directly and handle the error
+5. **Memory**: unbounded data structures, missing cleanup, event listener leaks
+6. **Overly broad operations**: reading entire files when only a portion is needed, loading all items when filtering for one
+
+### Code Simplification Review
+
+The goal is to leave the codebase cleaner after every change. Flag:
+
+1. **Unnecessary indirection**: intermediary files, wrapper functions, or adapter layers that add no value
+2. **Over-engineering**: configurable options nobody uses, abstractions for one-time operations, premature generalization
+3. **Dead artifacts**: code, imports, variables, or files introduced by this change that are already unused
+4. **Complexity that could be a direct expression**: can the change be expressed more simply? Fewer files? Fewer layers?
+
+## Severity Levels
+
+- "critical" — Security issue, data corruption risk, missing error handling, or tests that test nothing (waste)
+- "major" — Missing tests for real behavior, architectural problems, significant quality issues, code duplication
+- "minor" — Style issues, minor simplification opportunities, naming improvements
 - "none" — Code is production-quality
 
 Use severity "none" only if there are absolutely no quality issues.

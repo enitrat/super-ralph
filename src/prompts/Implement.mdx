@@ -24,46 +24,95 @@ Implementation steps from plan:
 
 ## Implementation Approach
 
-Assess whether TDD applies to this unit. **Not all work needs new tests — don't write tests that test nothing meaningful.**
+Rule: **Implement a small ATOMIC UNIT** of work possible for ONE feature of the plan. For example, one module with related functionalities, one file, one test module, etc.
+Don't aim to on _small_ units only: try to group into ONE reasonable work unit achievable in one commit. We'll re-iterate for each unit until completion.
 
-**TDD applies** when the ticket changes observable behavior:
+### Step 0: Does this unit change observable behavior?
+
+**TDD is mandatory** when the unit changes observable behavior:
 - New features, public API surface, or code paths
 - Bug fixes (test reproduces the bug first)
 - Changed inputs, outputs, or error handling
 
-**TDD does not apply** when the work is mechanical:
+**Skip TDD** only when the work is purely mechanical:
 - Dead code removal, unused exports, deprecated aliases
 - Renaming, moving, reorganizing without behavior change
 - Mechanical refactoring (extract function, change visibility)
 - Work where the compiler already enforces correctness
 
+If in doubt, write the test. If you can't write a meaningful test, the work is mechanical.
+
 ### When TDD Applies — Red → Green → Refactor
 
-**Step 1: Write Failing Tests FIRST**
+**The Iron Law: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST.**
+
+If you wrote code before the test, delete it. Start over. No exceptions — don't keep it as "reference", don't "adapt" it while writing tests, don't look at it. Delete means delete. Implement fresh from tests.
+
+#### Step 1: RED — Write One Failing Test
+
+Write a single test that describes the behavior you want. One behavior per test.
+
+**What makes a good test:**
+- Clear name describing expected behavior (e.g., `retries failed operations 3 times`)
+- Tests real observable behavior, not implementation details
+- Uses real code — mocks only when truly unavoidable (external services, network)
+- Tests one thing
+
+**What makes a BAD test — DO NOT WRITE THESE:**
+- Testing types, type exports, or type narrowing — the compiler does this
+- Testing that modules export the right names or re-exports exist
+- Testing naming conventions, file structure, or package organization
+- Vague test names (`it works`, `handles edge case`, `should be correct`)
+- Tests that pass immediately — you're testing existing behavior or testing nothing
 
 {props.testWritingGuidance && props.testWritingGuidance.length > 0
   ? props.testWritingGuidance.map(g => `${g}`).join('\n\n')
-  : '- Write tests for happy paths AND error paths\n- Run test command to confirm tests FAIL (red phase)'}
+  : '- Write tests for happy paths AND error paths'}
 
-**Step 2: Write Minimal Implementation (Green Phase)**
+**Run the test. Confirm it FAILS.**
+- Must fail because the feature is missing (not syntax errors or typos)
+- If it passes immediately: your test is wrong — you're testing existing behavior. Fix it or delete it.
+- If it errors instead of failing: fix the error first, then confirm it fails correctly
 
-- Write the SMALLEST amount of code to make failing tests pass
+#### Step 2: GREEN — Write Minimal Code
+
+Write the SMALLEST amount of code to make the failing test pass.
+- No additional features beyond what the test requires
+- No "improvements" or "enhancements"
+- No configurable options you don't need yet (YAGNI)
 {props.implementationGuidance && props.implementationGuidance.length > 0
   ? props.implementationGuidance.map(g => `- ${g}`).join('\n')
   : '- Follow project architectural patterns'}
 
-**Step 3: Refactor**
+**Run the test. Confirm it PASSES.**
+- If it fails: fix the code, not the test
+- If other tests break: fix them now
 
-- Clean up while keeping tests green
-- Extract shared logic, improve naming
-{props.formatterCommands && props.formatterCommands.length > 0
-  ? `- Run formatters: ${props.formatterCommands.join(', ')}`
-  : '- Run formatters'}
+**Repeat Steps 1-2 for each behavior the unit needs.**
 
-### When TDD Does Not Apply
+#### Common Rationalizations — Don't Fall For These
+
+| Excuse | Reality |
+|--------|---------|
+| "Too simple to test" | Simple code breaks. The test takes 30 seconds to write. |
+| "I'll test after" | Tests that pass immediately prove nothing about your code. |
+| "Already manually tested" | No record, can't re-run, doesn't prove edge cases. |
+| "Keep as reference, write tests first" | You'll adapt it. That's testing-after. Delete means delete. |
+| "Test is hard to write" | Hard to test = hard to use. Simplify the design. |
+
+#### Red Flags — STOP and Start Over
+
+If any of these happen, you skipped TDD. Delete code and restart:
+- You wrote production code before writing a test
+- A test passed immediately without new implementation
+- You can't explain why a test failed
+- You're rationalizing "just this once"
+
+### When TDD Does Not Apply (Mechanical Work)
 
 1. Make the changes described in the plan
 2. Run typecheck — no new type errors
+3. Run tests — ensuring we didn't break any existing tests
 {props.verifyCommands && props.verifyCommands.length > 0 ? props.verifyCommands.map(c => `- Run \`${c}\` — existing tests must still pass`).join('\n') : '- Run existing tests — all suites must still pass'}
 {props.formatterCommands && props.formatterCommands.length > 0 ? `- Run formatters: ${props.formatterCommands.join(', ')}` : '- Run formatters'}
 
